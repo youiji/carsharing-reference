@@ -86,4 +86,4 @@ TEST_DATABASE_URL=postgres://postgres@localhost:5432/carsharing_test?sslmode=dis
 | 8. Журнал обслуживания | готово |
 | 9. Аренды | готово |
 | 10. Пользователи | готово |
-| 11. Статистика | — |
+| 11. Статистика | готово |

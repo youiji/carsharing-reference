@@ -22,6 +22,7 @@ type Deps struct {
 	Tariffs     TariffService
 	Maintenance MaintenanceService
 	UsersAdmin  UserService
+	Stats       StatsService
 }
 
 // NewRouter собирает маршруты API (docs/api.md, раздел 3).
@@ -45,6 +46,7 @@ func NewRouter(d Deps) http.Handler {
 	tariffs := &TariffHandler{svc: d.Tariffs}
 	maintenance := &MaintenanceHandler{svc: d.Maintenance}
 	users := &UserHandler{svc: d.UsersAdmin}
+	stats := &StatsHandler{svc: d.Stats}
 
 	const (
 		client  = models.RoleClient
@@ -95,6 +97,9 @@ func NewRouter(d Deps) http.Handler {
 	mux.Handle("PATCH /api/users/{id}/role", protect(users.ChangeRole, admin))
 	mux.Handle("PATCH /api/users/{id}", protect(users.Update, admin))
 	mux.Handle("DELETE /api/users/{id}", protect(users.Delete, admin))
+
+	// Статистика
+	mux.Handle("GET /api/stats", protect(stats.Get, manager, admin))
 
 	// Остальные запросы к /api/: путь есть, но метод другой — 405 с заголовком Allow,
 	// пути нет — 404. Оба ответа в едином JSON-формате.

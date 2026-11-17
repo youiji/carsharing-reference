@@ -50,6 +50,7 @@ func run() error {
 	tariffSvc := services.NewTariffService(repository.NewTariffRepository(pool))
 	maintenanceSvc := services.NewMaintenanceService(repository.NewMaintenanceRepository(pool))
 	userSvc := services.NewUserService(userRepo)
+	statsSvc := services.NewStatsService(repository.NewStatsRepository(pool))
 
 	router := handlers.NewRouter(handlers.Deps{
 		DB:          pool,
@@ -61,6 +62,7 @@ func run() error {
 		Tariffs:     tariffSvc,
 		Maintenance: maintenanceSvc,
 		UsersAdmin:  userSvc,
+		Stats:       statsSvc,
 	})
 
 	srv := &http.Server{
