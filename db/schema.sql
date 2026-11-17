@@ -38,6 +38,10 @@ CREATE TABLE users (
 
     CONSTRAINT uq_users_email           UNIQUE (email),
     CONSTRAINT uq_users_driver_license  UNIQUE (driver_license),
+    -- ВУ хранится в нормализованном виде NNNN NNNNNN (серия и номер);
+    -- приведение к этому виду выполняет сервис при регистрации
+    CONSTRAINT chk_users_driver_license CHECK (driver_license IS NULL
+        OR driver_license ~ '^[0-9]{4} [0-9]{6}$'),
     CONSTRAINT chk_users_role           CHECK (role IN ('client', 'manager', 'admin'))
 );
 

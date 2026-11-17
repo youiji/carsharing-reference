@@ -20,49 +20,49 @@ ROLLBACK
 Ожидается: ERROR ... chk_rentals_status_dates
 BEGIN
 psql:db/checks.sql:49: ERROR:  new row for relation "rentals" violates check constraint "chk_rentals_status_dates"
-DETAIL:  Failing row contains (17, 8, 1, 7, 2026-11-16 20:39:50.737975+03, 2026-11-16 20:49:50.737975+03, null, 8.90, 2.00, 100.00, completed).
+DETAIL:  Failing row contains (17, 8, 1, 7, 2026-11-18 02:06:52.658157+03, 2026-11-18 02:16:52.658157+03, null, 8.90, 2.00, 100.00, completed).
 ROLLBACK
 
 Тест 4. Статус active без started_at
 Ожидается: ERROR ... chk_rentals_status_dates
 BEGIN
 psql:db/checks.sql:59: ERROR:  new row for relation "rentals" violates check constraint "chk_rentals_status_dates"
-DETAIL:  Failing row contains (18, 8, 1, 7, 2026-11-16 20:49:50.739881+03, null, null, 8.90, 2.00, null, active).
+DETAIL:  Failing row contains (18, 8, 1, 7, 2026-11-18 02:16:52.658497+03, null, null, 8.90, 2.00, null, active).
 ROLLBACK
 
 Тест 5. Статус completed без total_cost
 Ожидается: ERROR ... chk_rentals_status_dates
 BEGIN
 psql:db/checks.sql:71: ERROR:  new row for relation "rentals" violates check constraint "chk_rentals_status_dates"
-DETAIL:  Failing row contains (19, 8, 1, 7, 2026-11-16 17:49:50.740875+03, 2026-11-16 18:49:50.740875+03, 2026-11-16 19:49:50.740875+03, 8.90, 2.00, null, completed).
+DETAIL:  Failing row contains (19, 8, 1, 7, 2026-11-17 23:16:52.658757+03, 2026-11-18 00:16:52.658757+03, 2026-11-18 01:16:52.658757+03, 8.90, 2.00, null, completed).
 ROLLBACK
 
 Тест 6. Старт поездки раньше бронирования (started_at < booked_at)
 Ожидается: ERROR ... chk_rentals_started_after_booked
 BEGIN
 psql:db/checks.sql:83: ERROR:  new row for relation "rentals" violates check constraint "chk_rentals_started_after_booked"
-DETAIL:  Failing row contains (20, 8, 1, 7, 2026-11-16 20:49:50.741735+03, 2026-11-16 19:49:50.741735+03, null, 8.90, 2.00, null, active).
+DETAIL:  Failing row contains (20, 8, 1, 7, 2026-11-18 02:16:52.659022+03, 2026-11-18 01:16:52.659022+03, null, 8.90, 2.00, null, active).
 ROLLBACK
 
 Тест 7. Окончание поездки раньше старта (ended_at < started_at)
 Ожидается: ERROR ... chk_rentals_ended_after_started
 BEGIN
 psql:db/checks.sql:95: ERROR:  new row for relation "rentals" violates check constraint "chk_rentals_ended_after_started"
-DETAIL:  Failing row contains (21, 8, 1, 7, 2026-11-16 17:49:50.742596+03, 2026-11-16 18:49:50.742596+03, 2026-11-16 18:19:50.742596+03, 8.90, 2.00, 100.00, completed).
+DETAIL:  Failing row contains (21, 8, 1, 7, 2026-11-17 23:16:52.659281+03, 2026-11-18 00:16:52.659281+03, 2026-11-17 23:46:52.659281+03, 8.90, 2.00, 100.00, completed).
 ROLLBACK
 
 Тест 8. Неизвестный статус аренды
 Ожидается: ERROR ... chk_rentals_status
 BEGIN
 psql:db/checks.sql:105: ERROR:  new row for relation "rentals" violates check constraint "chk_rentals_status"
-DETAIL:  Failing row contains (22, 8, 1, 7, 2026-11-16 20:49:50.743403+03, null, null, 8.90, 2.00, null, paused).
+DETAIL:  Failing row contains (22, 8, 1, 7, 2026-11-18 02:16:52.659657+03, null, null, 8.90, 2.00, null, paused).
 ROLLBACK
 
 Тест 9. Отрицательная цена в аренде
 Ожидается: ERROR ... chk_rentals_price
 BEGIN
 psql:db/checks.sql:115: ERROR:  new row for relation "rentals" violates check constraint "chk_rentals_price"
-DETAIL:  Failing row contains (23, 8, 1, 7, 2026-11-16 20:49:50.744082+03, null, null, -5.00, 2.00, null, booked).
+DETAIL:  Failing row contains (23, 8, 1, 7, 2026-11-18 02:16:52.659995+03, null, null, -5.00, 2.00, null, booked).
 ROLLBACK
 
 =============== B. Нарушения ограничений автомобилей, пользователей, тарифов ===============
@@ -106,7 +106,7 @@ ROLLBACK
 Ожидается: ERROR ... chk_users_role
 BEGIN
 psql:db/checks.sql:166: ERROR:  new row for relation "users" violates check constraint "chk_users_role"
-DETAIL:  Failing row contains (10, hacker@example.com, x, Test User, null, superadmin, 2026-11-16 20:49:50.747602+03).
+DETAIL:  Failing row contains (10, hacker@example.com, x, Test User, null, superadmin, 2026-11-18 02:16:52.661231+03).
 ROLLBACK
 
 Тест 16. Дубликат email в другом регистре (CITEXT)
@@ -123,46 +123,53 @@ psql:db/checks.sql:181: ERROR:  new row for relation "tariffs" violates check co
 DETAIL:  Failing row contains (4, Тест, -1.00, 1.00).
 ROLLBACK
 
+Тест 18. Водительское удостоверение не в формате NNNN NNNNNN
+Ожидается: ERROR ... chk_users_driver_license
+BEGIN
+psql:db/checks.sql:189: ERROR:  new row for relation "users" violates check constraint "chk_users_driver_license"
+DETAIL:  Failing row contains (12, license.test@example.com, x, Test User, 77AB-12, client, 2026-11-18 02:16:52.661939+03).
+ROLLBACK
+
 =============== C. Защита истории: удаление связанных записей ===============
 
-Тест 18. Удаление автомобиля, у которого есть аренды и обслуживание
+Тест 19. Удаление автомобиля, у которого есть аренды и обслуживание
 Ожидается: ERROR ... violates foreign key constraint (fk_rentals_car или fk_ml_car)
 BEGIN
-psql:db/checks.sql:191: ERROR:  update or delete on table "cars" violates foreign key constraint "fk_rentals_car" on table "rentals"
+psql:db/checks.sql:199: ERROR:  update or delete on table "cars" violates foreign key constraint "fk_rentals_car" on table "rentals"
 DETAIL:  Key (id)=(8) is still referenced from table "rentals".
 ROLLBACK
 
-Тест 19. Удаление пользователя, у которого есть аренды
+Тест 20. Удаление пользователя, у которого есть аренды
 Ожидается: ERROR ... fk_rentals_user
 BEGIN
-psql:db/checks.sql:198: ERROR:  update or delete on table "users" violates foreign key constraint "fk_rentals_user" on table "rentals"
+psql:db/checks.sql:206: ERROR:  update or delete on table "users" violates foreign key constraint "fk_rentals_user" on table "rentals"
 DETAIL:  Key (id)=(4) is still referenced from table "rentals".
 ROLLBACK
 
-Тест 20. Удаление тарифа, на который ссылаются автомобили
+Тест 21. Удаление тарифа, на который ссылаются автомобили
 Ожидается: ERROR ... violates foreign key constraint (fk_cars_tariff или fk_rentals_tariff)
 BEGIN
-psql:db/checks.sql:205: ERROR:  update or delete on table "tariffs" violates foreign key constraint "fk_cars_tariff" on table "cars"
+psql:db/checks.sql:213: ERROR:  update or delete on table "tariffs" violates foreign key constraint "fk_cars_tariff" on table "cars"
 DETAIL:  Key (id)=(1) is still referenced from table "cars".
 ROLLBACK
 
 =============== D. Допустимые операции (должны пройти) ===============
 
-Тест 21. Удаление тарифа без связанных записей
+Тест 22. Удаление тарифа без связанных записей
 Ожидается: INSERT 0 1, затем DELETE 1
 BEGIN
 INSERT 0 1
 DELETE 1
 ROLLBACK
 
-Тест 22. Завершение активной аренды освобождает машину для нового бронирования
+Тест 23. Завершение активной аренды освобождает машину для нового бронирования
 Ожидается: UPDATE 1, затем INSERT 0 1
 BEGIN
 UPDATE 1
 INSERT 0 1
 ROLLBACK
 
-Тест 23. Отмена бронирования и повторное бронирование той же машины
+Тест 24. Отмена бронирования и повторное бронирование той же машины
 Ожидается: UPDATE 1, затем INSERT 0 1
 BEGIN
 UPDATE 1

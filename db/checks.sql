@@ -5,9 +5,9 @@
 --
 -- Каждый тест выполняется в своей транзакции и заканчивается ROLLBACK,
 -- поэтому данные в базе не меняются.
--- В тестах 1–20 база ДОЛЖНА отклонить запрос: в выводе будет строка ERROR
+-- В тестах 1–21 база ДОЛЖНА отклонить запрос: в выводе будет строка ERROR
 -- с именем нарушенного ограничения (имена — из db/schema.sql).
--- В тестах 21–23 запрос должен ПРОЙТИ (INSERT 0 1 / UPDATE 1 / DELETE 1).
+-- В тестах 22–24 запрос должен ПРОЙТИ (INSERT 0 1 / UPDATE 1 / DELETE 1).
 -- Сообщения об ошибках выводит сам PostgreSQL, на английском языке.
 -- =============================================================
 
@@ -182,24 +182,32 @@ INSERT INTO tariffs (name, price_per_min, waiting_per_min) VALUES ('Тест', -
 ROLLBACK;
 
 \echo
+\echo 'Тест 18. Водительское удостоверение не в формате NNNN NNNNNN'
+\echo 'Ожидается: ERROR ... chk_users_driver_license'
+BEGIN;
+INSERT INTO users (email, password_hash, full_name, driver_license)
+VALUES ('license.test@example.com', 'x', 'Test User', '77AB-12');
+ROLLBACK;
+
+\echo
 \echo '=============== C. Защита истории: удаление связанных записей ==============='
 
 \echo
-\echo 'Тест 18. Удаление автомобиля, у которого есть аренды и обслуживание'
+\echo 'Тест 19. Удаление автомобиля, у которого есть аренды и обслуживание'
 \echo 'Ожидается: ERROR ... violates foreign key constraint (fk_rentals_car или fk_ml_car)'
 BEGIN;
 DELETE FROM cars WHERE plate_number = 'А101АА777';
 ROLLBACK;
 
 \echo
-\echo 'Тест 19. Удаление пользователя, у которого есть аренды'
+\echo 'Тест 20. Удаление пользователя, у которого есть аренды'
 \echo 'Ожидается: ERROR ... fk_rentals_user'
 BEGIN;
 DELETE FROM users WHERE email = 'ivan.petrov@example.com';
 ROLLBACK;
 
 \echo
-\echo 'Тест 20. Удаление тарифа, на который ссылаются автомобили'
+\echo 'Тест 21. Удаление тарифа, на который ссылаются автомобили'
 \echo 'Ожидается: ERROR ... violates foreign key constraint (fk_cars_tariff или fk_rentals_tariff)'
 BEGIN;
 DELETE FROM tariffs WHERE name = 'Эконом';
@@ -209,7 +217,7 @@ ROLLBACK;
 \echo '=============== D. Допустимые операции (должны пройти) ==============='
 
 \echo
-\echo 'Тест 21. Удаление тарифа без связанных записей'
+\echo 'Тест 22. Удаление тарифа без связанных записей'
 \echo 'Ожидается: INSERT 0 1, затем DELETE 1'
 BEGIN;
 INSERT INTO tariffs (name, price_per_min, waiting_per_min) VALUES ('Временный', 5, 1);
@@ -217,7 +225,7 @@ DELETE FROM tariffs WHERE name = 'Временный';
 ROLLBACK;
 
 \echo
-\echo 'Тест 22. Завершение активной аренды освобождает машину для нового бронирования'
+\echo 'Тест 23. Завершение активной аренды освобождает машину для нового бронирования'
 \echo 'Ожидается: UPDATE 1, затем INSERT 0 1'
 BEGIN;
 UPDATE rentals SET status = 'completed', ended_at = now(), total_cost = 250
@@ -230,7 +238,7 @@ WHERE u.email = 'dmitry.ivanov@example.com' AND c.plate_number = 'Е303ЕЕ777';
 ROLLBACK;
 
 \echo
-\echo 'Тест 23. Отмена бронирования и повторное бронирование той же машины'
+\echo 'Тест 24. Отмена бронирования и повторное бронирование той же машины'
 \echo 'Ожидается: UPDATE 1, затем INSERT 0 1'
 BEGIN;
 UPDATE rentals SET status = 'cancelled'
