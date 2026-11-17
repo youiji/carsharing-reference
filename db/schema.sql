@@ -135,7 +135,7 @@ CREATE UNIQUE INDEX uq_rentals_one_active_per_user
 CREATE TABLE maintenance_logs (
     id          BIGSERIAL      PRIMARY KEY,
     car_id      BIGINT         NOT NULL,
-    manager_id  BIGINT         NOT NULL,   -- роль manager проверяется в приложении
+    manager_id  BIGINT         NOT NULL,   -- автор: manager или admin (проверяется в приложении)
     description VARCHAR(255)   NOT NULL,
     cost        NUMERIC(10,2)  NOT NULL,
     logged_at   TIMESTAMPTZ    NOT NULL DEFAULT CURRENT_TIMESTAMP,

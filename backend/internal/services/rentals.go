@@ -55,6 +55,22 @@ func (s *RentalService) Book(ctx context.Context, user models.User, req dto.Crea
 			return util.ErrCarUnavailable
 		}
 
+		// Роль и ВУ перечитываются под блокировкой: администратор мог изменить их
+		// после того, как Auth загрузил пользователя.
+		role, license, err := tx.LockUser(ctx, user.ID)
+		if errors.Is(err, repository.ErrNotFound) {
+			return util.ErrUnauthorized
+		}
+		if err != nil {
+			return err
+		}
+		if role != models.RoleClient {
+			return util.ErrForbidden
+		}
+		if license == nil || *license == "" {
+			return util.ErrLicenseRequired
+		}
+
 		hasOpen, err := tx.UserHasOpenRental(ctx, user.ID)
 		if err != nil {
 			return err

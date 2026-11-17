@@ -54,6 +54,7 @@ func newRentalEnv(t *testing.T) *rentalEnv {
 		// Удаляем всё, что создал тест, и возвращаем машины в исходное состояние.
 		_, err := pool.Exec(ctx, `
 			DELETE FROM rentals WHERE user_id IN (SELECT id FROM users WHERE email LIKE 'it-%@test.local');
+			DELETE FROM maintenance_logs WHERE manager_id IN (SELECT id FROM users WHERE email LIKE 'it-%@test.local');
 			DELETE FROM users WHERE email LIKE 'it-%@test.local';`)
 		if err != nil {
 			t.Errorf("cleanup: %v", err)
@@ -65,6 +66,11 @@ func newRentalEnv(t *testing.T) *rentalEnv {
 
 // client создаёт клиента с ВУ (или без, если withLicense = false).
 func (e *rentalEnv) client(withLicense bool) models.User {
+	return e.user(models.RoleClient, withLicense)
+}
+
+// user создаёт пользователя с указанной ролью.
+func (e *rentalEnv) user(role string, withLicense bool) models.User {
 	e.seq++
 	var license *string
 	if withLicense {
@@ -76,7 +82,7 @@ func (e *rentalEnv) client(withLicense bool) models.User {
 		PasswordHash:  "x",
 		FullName:      "Интеграционный Тест",
 		DriverLicense: license,
-		Role:          models.RoleClient,
+		Role:          role,
 	})
 	if err != nil {
 		e.t.Fatal(err)

@@ -287,11 +287,12 @@ WHERE r.tariff_id <> c.tariff_id
    OR r.waiting_per_min <> t.waiting_per_min;
 
 \echo
-\echo 'Проверка 5. Записи обслуживания, где manager_id принадлежит не менеджеру'
+\echo 'Проверка 5. Записи обслуживания, автор которых сейчас не менеджер и не администратор'
+\echo '(может быть не пусто, если сотрудника позже перевели в клиенты: запись остаётся в истории)'
 SELECT m.id, u.email, u.role
 FROM maintenance_logs m
 JOIN users u ON u.id = m.manager_id
-WHERE u.role <> 'manager';
+WHERE u.role NOT IN ('manager', 'admin');
 
 \echo
 \echo 'Проверка 6. Аренды у пользователей без водительского удостоверения'

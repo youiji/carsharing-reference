@@ -48,15 +48,19 @@ func run() error {
 	rentalSvc := services.NewRentalService(repository.NewRentalRepository(pool))
 	carSvc := services.NewCarService(repository.NewCarRepository(pool))
 	tariffSvc := services.NewTariffService(repository.NewTariffRepository(pool))
+	maintenanceSvc := services.NewMaintenanceService(repository.NewMaintenanceRepository(pool))
+	userSvc := services.NewUserService(userRepo)
 
 	router := handlers.NewRouter(handlers.Deps{
-		DB:      pool,
-		Tokens:  tokens,
-		Users:   userRepo,
-		Auth:    authSvc,
-		Rentals: rentalSvc,
-		Cars:    carSvc,
-		Tariffs: tariffSvc,
+		DB:          pool,
+		Tokens:      tokens,
+		Users:       userRepo,
+		Auth:        authSvc,
+		Rentals:     rentalSvc,
+		Cars:        carSvc,
+		Tariffs:     tariffSvc,
+		Maintenance: maintenanceSvc,
+		UsersAdmin:  userSvc,
 	})
 
 	srv := &http.Server{

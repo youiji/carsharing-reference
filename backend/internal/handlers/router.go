@@ -13,13 +13,15 @@ import (
 
 // Deps — зависимости, нужные обработчикам.
 type Deps struct {
-	DB      Pinger
-	Tokens  *util.TokenManager
-	Users   middleware.UserLoader
-	Auth    AuthService
-	Rentals RentalService
-	Cars    CarService
-	Tariffs TariffService
+	DB          Pinger
+	Tokens      *util.TokenManager
+	Users       middleware.UserLoader
+	Auth        AuthService
+	Rentals     RentalService
+	Cars        CarService
+	Tariffs     TariffService
+	Maintenance MaintenanceService
+	UsersAdmin  UserService
 }
 
 // NewRouter собирает маршруты API (docs/api.md, раздел 3).
@@ -41,6 +43,8 @@ func NewRouter(d Deps) http.Handler {
 	rentals := &RentalHandler{svc: d.Rentals}
 	cars := &CarHandler{svc: d.Cars}
 	tariffs := &TariffHandler{svc: d.Tariffs}
+	maintenance := &MaintenanceHandler{svc: d.Maintenance}
+	users := &UserHandler{svc: d.UsersAdmin}
 
 	const (
 		client  = models.RoleClient
@@ -79,6 +83,18 @@ func NewRouter(d Deps) http.Handler {
 	mux.Handle("GET /api/rentals/my", protect(rentals.ListMy, client))
 	mux.Handle("GET /api/rentals", protect(rentals.List, manager, admin))
 	mux.Handle("GET /api/rentals/{id}", protect(rentals.Get, client, manager, admin))
+
+	// Журнал обслуживания. Автор записи проверяется в сервисе.
+	mux.Handle("GET /api/maintenance", protect(maintenance.List, manager, admin))
+	mux.Handle("POST /api/maintenance", protect(maintenance.Create, manager, admin))
+	mux.Handle("PATCH /api/maintenance/{id}", protect(maintenance.Update, manager, admin))
+	mux.Handle("DELETE /api/maintenance/{id}", protect(maintenance.Delete, manager, admin))
+
+	// Пользователи и роли
+	mux.Handle("GET /api/users", protect(users.List, admin))
+	mux.Handle("PATCH /api/users/{id}/role", protect(users.ChangeRole, admin))
+	mux.Handle("PATCH /api/users/{id}", protect(users.Update, admin))
+	mux.Handle("DELETE /api/users/{id}", protect(users.Delete, admin))
 
 	// Остальные запросы к /api/: путь есть, но метод другой — 405 с заголовком Allow,
 	// пути нет — 404. Оба ответа в едином JSON-формате.

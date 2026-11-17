@@ -121,8 +121,8 @@ func (r *RentalRepository) InTx(ctx context.Context, fn func(tx *RentalTx) error
 }
 
 // RentalTx — операции внутри транзакции аренды. Порядок блокировок:
-// при бронировании — строка cars; при старте, завершении и отмене —
-// сначала rentals, затем cars.
+// при бронировании — строка cars, затем users (FOR SHARE); при старте,
+// завершении и отмене — сначала rentals, затем cars.
 type RentalTx struct {
 	tx pgx.Tx
 }
@@ -152,6 +152,18 @@ func (t *RentalTx) LockCar(ctx context.Context, carID int64) (CarForBooking, err
 		return CarForBooking{}, fmt.Errorf("lock car: %w", notFound(err))
 	}
 	return c, nil
+}
+
+// LockUser блокирует строку пользователя на чтение (FOR SHARE) и возвращает
+// актуальные роль и ВУ. Пока бронирование не завершено, администратор не может
+// изменить роль или данные этого пользователя (UserTx.Lock ждёт), и наоборот.
+func (t *RentalTx) LockUser(ctx context.Context, userID int64) (role string, license *string, err error) {
+	err = t.tx.QueryRow(ctx, `SELECT role, driver_license FROM users WHERE id = $1 FOR SHARE`, userID).
+		Scan(&role, &license)
+	if err != nil {
+		return "", nil, fmt.Errorf("lock user: %w", notFound(err))
+	}
+	return role, license, nil
 }
 
 // UserHasOpenRental — есть ли у пользователя аренда в статусе booked или active.
