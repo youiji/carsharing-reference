@@ -25,6 +25,17 @@ var uniqueConstraintErrors = map[string]*AppError{
 	"uq_rentals_one_active_per_user": ErrUserHasActiveRental,
 }
 
+// foreignKeyFields сопоставляет внешние ключи из db/schema.sql с полями запроса:
+// при вставке ссылки на несуществующий объект ошибка указывает на поле.
+var foreignKeyFields = map[string]string{
+	"fk_cars_tariff":    "tariff_id",
+	"fk_rentals_user":   "user_id",
+	"fk_rentals_tariff": "tariff_id",
+	"fk_rentals_car":    "car_id",
+	"fk_ml_car":         "car_id",
+	"fk_ml_manager":     "manager_id",
+}
+
 // MapPgError переводит ошибку PostgreSQL в AppError (docs/api.md, раздел 1.4).
 // Ошибки, не относящиеся к ограничениям целостности, возвращаются без изменений.
 //
@@ -47,6 +58,9 @@ func MapPgError(err error) error {
 		// PostgreSQL: "update or delete on table ... violates foreign key constraint ..."
 		if strings.HasPrefix(pgErr.Message, "update or delete") {
 			return ErrHasRelatedRecords
+		}
+		if field, ok := foreignKeyFields[pgErr.ConstraintName]; ok {
+			return ErrValidation.WithDetails(map[string]string{field: "объект не найден"})
 		}
 		return ErrValidation.WithMessage("Ссылка на несуществующий объект")
 	case pgCheckViolation:

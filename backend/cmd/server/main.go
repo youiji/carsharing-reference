@@ -46,6 +46,8 @@ func run() error {
 	userRepo := repository.NewUserRepository(pool)
 	authSvc := services.NewAuthService(userRepo, tokens)
 	rentalSvc := services.NewRentalService(repository.NewRentalRepository(pool))
+	carSvc := services.NewCarService(repository.NewCarRepository(pool))
+	tariffSvc := services.NewTariffService(repository.NewTariffRepository(pool))
 
 	router := handlers.NewRouter(handlers.Deps{
 		DB:      pool,
@@ -53,6 +55,8 @@ func run() error {
 		Users:   userRepo,
 		Auth:    authSvc,
 		Rentals: rentalSvc,
+		Cars:    carSvc,
+		Tariffs: tariffSvc,
 	})
 
 	srv := &http.Server{

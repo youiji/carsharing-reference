@@ -18,6 +18,8 @@ type Deps struct {
 	Users   middleware.UserLoader
 	Auth    AuthService
 	Rentals RentalService
+	Cars    CarService
+	Tariffs TariffService
 }
 
 // NewRouter собирает маршруты API (docs/api.md, раздел 3).
@@ -37,6 +39,8 @@ func NewRouter(d Deps) http.Handler {
 	health := &HealthHandler{db: d.DB}
 	auth := &AuthHandler{svc: d.Auth}
 	rentals := &RentalHandler{svc: d.Rentals}
+	cars := &CarHandler{svc: d.Cars}
+	tariffs := &TariffHandler{svc: d.Tariffs}
 
 	const (
 		client  = models.RoleClient
@@ -52,6 +56,20 @@ func NewRouter(d Deps) http.Handler {
 	mux.HandleFunc("POST /api/auth/login", auth.Login)
 	mux.Handle("GET /api/me", protect(auth.Me))
 	mux.Handle("PUT /api/me/password", protect(auth.ChangePassword))
+
+	// Каталог и тарифы (чтение). Видимость автомобилей для клиента — в сервисе.
+	mux.Handle("GET /api/cars", protect(cars.List, client, manager, admin))
+	mux.Handle("GET /api/cars/{id}", protect(cars.Get, client, manager, admin))
+	mux.Handle("GET /api/tariffs", protect(tariffs.List, client, manager, admin))
+
+	// Управление автопарком и тарифами
+	mux.Handle("POST /api/cars", protect(cars.Create, manager, admin))
+	mux.Handle("PUT /api/cars/{id}", protect(cars.Update, manager, admin))
+	mux.Handle("PATCH /api/cars/{id}/status", protect(cars.ChangeStatus, manager, admin))
+	mux.Handle("DELETE /api/cars/{id}", protect(cars.Delete, manager, admin))
+	mux.Handle("POST /api/tariffs", protect(tariffs.Create, manager, admin))
+	mux.Handle("PUT /api/tariffs/{id}", protect(tariffs.Update, manager, admin))
+	mux.Handle("DELETE /api/tariffs/{id}", protect(tariffs.Delete, manager, admin))
 
 	// Аренды. Владелец аренды проверяется в сервисе.
 	mux.Handle("POST /api/rentals", protect(rentals.Book, client))

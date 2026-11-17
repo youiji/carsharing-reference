@@ -17,15 +17,6 @@ const (
 // RentalStatuses — все допустимые статусы аренды.
 var RentalStatuses = []string{RentalBooked, RentalActive, RentalCompleted, RentalCancelled}
 
-// Статусы автомобиля (cars.status), docs/api.md, раздел 2.2.
-const (
-	CarAvailable      = "available"
-	CarBooked         = "booked"
-	CarInUse          = "in_use"
-	CarMaintenance    = "maintenance"
-	CarDecommissioned = "decommissioned"
-)
-
 // Rental — строка таблицы rentals. Поля User* и Car* заполняются
 // при чтении (JOIN с users и cars) и не хранятся в rentals.
 type Rental struct {

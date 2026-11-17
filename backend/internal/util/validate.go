@@ -101,3 +101,18 @@ func NormalizeDriverLicense(s string) (string, bool) {
 	}
 	return s[:4] + " " + s[4:], true
 }
+
+// latinToCyrillic — латинские буквы, совпадающие по написанию с буквами
+// российских гос. номеров (А, В, Е, К, М, Н, О, Р, С, Т, У, Х).
+var latinToCyrillic = strings.NewReplacer(
+	"A", "А", "B", "В", "E", "Е", "K", "К", "M", "М", "H", "Н",
+	"O", "О", "P", "Р", "C", "С", "T", "Т", "Y", "У", "X", "Х",
+)
+
+// NormalizePlate приводит гос. номер к единому виду: без пробелов, в верхнем
+// регистре, латинские буквы-двойники заменены кириллицей. Так "a 101 aa 777"
+// и "А101АА777" считаются одним номером и не обходят уникальность.
+func NormalizePlate(s string) string {
+	s = strings.Join(strings.Fields(s), "")
+	return latinToCyrillic.Replace(strings.ToUpper(s))
+}
