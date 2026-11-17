@@ -66,6 +66,16 @@ cd backend && go test ./...                              # unit-тесты
 psql -U postgres -d carsharing -f db/checks.sql          # ограничения БД
 ```
 
+Интеграционные тесты аренд (полный цикл, одновременные бронирования одной машины)
+работают с реальной БД, в которой загружены `schema.sql` и `seed.sql`. Созданные тестом
+записи удаляются в конце, но лучше использовать отдельную базу:
+
+```sh
+cd backend
+TEST_DATABASE_URL=postgres://postgres@localhost:5432/carsharing_test?sslmode=disable \
+  go test -race -run Integration -v ./internal/services
+```
+
 ## Готовность API
 
 | Раздел api.md | Статус |
@@ -74,6 +84,6 @@ psql -U postgres -d carsharing -f db/checks.sql          # ограничени�
 | 5. Аутентификация и профиль | готово |
 | 6–7. Каталог, автопарк, тарифы | — |
 | 8. Журнал обслуживания | — |
-| 9. Аренды | — |
+| 9. Аренды | готово |
 | 10. Пользователи | — |
 | 11. Статистика | — |

@@ -45,12 +45,14 @@ func run() error {
 	tokens := util.NewTokenManager(cfg.JWTSecret, cfg.JWTTTL)
 	userRepo := repository.NewUserRepository(pool)
 	authSvc := services.NewAuthService(userRepo, tokens)
+	rentalSvc := services.NewRentalService(repository.NewRentalRepository(pool))
 
 	router := handlers.NewRouter(handlers.Deps{
-		DB:     pool,
-		Tokens: tokens,
-		Users:  userRepo,
-		Auth:   authSvc,
+		DB:      pool,
+		Tokens:  tokens,
+		Users:   userRepo,
+		Auth:    authSvc,
+		Rentals: rentalSvc,
 	})
 
 	srv := &http.Server{

@@ -53,10 +53,22 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 // или лишние данные после объекта дают 400 validation_error.
 // Неизвестные поля игнорируются (например, role при регистрации).
 func DecodeJSON(w http.ResponseWriter, r *http.Request, dst any) error {
+	return decodeJSON(w, r, dst, false)
+}
+
+// DecodeOptionalJSON — как DecodeJSON, но пустое тело допустимо (dst не меняется).
+func DecodeOptionalJSON(w http.ResponseWriter, r *http.Request, dst any) error {
+	return decodeJSON(w, r, dst, true)
+}
+
+func decodeJSON(w http.ResponseWriter, r *http.Request, dst any, optional bool) error {
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
 	dec := json.NewDecoder(r.Body)
 	if err := dec.Decode(dst); err != nil {
 		if errors.Is(err, io.EOF) {
+			if optional {
+				return nil
+			}
 			return ErrValidation.WithMessage("Пустое тело запроса")
 		}
 		var maxErr *http.MaxBytesError
@@ -66,6 +78,9 @@ func DecodeJSON(w http.ResponseWriter, r *http.Request, dst any) error {
 		var typeErr *json.UnmarshalTypeError
 		if errors.As(err, &typeErr) && typeErr.Field != "" {
 			return ErrValidation.WithDetails(map[string]string{typeErr.Field: "неверный тип значения"})
+		}
+		if errors.Is(err, ErrMoneyFormat) {
+			return ErrValidation.WithMessage(ErrMoneyFormat.Error())
 		}
 		return ErrValidation.WithMessage("Некорректный JSON в теле запроса")
 	}
