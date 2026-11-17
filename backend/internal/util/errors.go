@@ -58,6 +58,7 @@ var (
 	ErrUserHasActiveRental = newErr(http.StatusConflict, "user_has_active_rental", "У пользователя есть бронирование или активная аренда")
 	ErrInvalidTransition   = newErr(http.StatusConflict, "invalid_status_transition", "Недопустимая смена статуса")
 	ErrHasRelatedRecords   = newErr(http.StatusConflict, "has_related_records", "Нельзя удалить объект: на него ссылаются другие записи")
+	ErrMethodNotAllowed    = newErr(http.StatusMethodNotAllowed, "method_not_allowed", "Метод не поддерживается для этого адреса")
 	ErrInternal            = newErr(http.StatusInternalServerError, "internal_error", "Внутренняя ошибка сервера")
 )
 

@@ -4,6 +4,7 @@ package handlers
 
 import (
 	"net/http"
+	"strings"
 
 	"carsharing/internal/middleware"
 	"carsharing/internal/models"
@@ -61,11 +62,33 @@ func NewRouter(d Deps) http.Handler {
 	mux.Handle("GET /api/rentals", protect(rentals.List, manager, admin))
 	mux.Handle("GET /api/rentals/{id}", protect(rentals.Get, client, manager, admin))
 
-	// Неизвестный путь API — 404 в едином JSON-формате.
+	// Остальные запросы к /api/: путь есть, но метод другой — 405 с заголовком Allow,
+	// пути нет — 404. Оба ответа в едином JSON-формате.
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
+		if allowed := allowedMethods(mux, r); len(allowed) > 0 {
+			w.Header().Set("Allow", strings.Join(allowed, ", "))
+			util.WriteError(w, r, util.ErrMethodNotAllowed)
+			return
+		}
 		util.WriteError(w, r, util.ErrNotFound.WithMessage("Метод API не найден"))
 	})
 
 	// Logger снаружи, чтобы в лог попадали и ответы 500 после паники.
 	return middleware.Chain(mux, middleware.Logger, middleware.Recover)
+}
+
+// allowedMethods возвращает методы, для которых путь запроса зарегистрирован в mux.
+func allowedMethods(mux *http.ServeMux, r *http.Request) []string {
+	var allowed []string
+	for _, m := range []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete} {
+		if m == r.Method {
+			continue
+		}
+		probe := r.Clone(r.Context())
+		probe.Method = m
+		if _, pattern := mux.Handler(probe); pattern != "" && pattern != "/api/" {
+			allowed = append(allowed, m)
+		}
+	}
+	return allowed
 }
