@@ -19,9 +19,6 @@ import (
 // в PostgreSQL читается из NUMERIC и записывается в NUMERIC без потери точности.
 type Money int64
 
-// MoneyFromRubles создаёт сумму из рублей и копеек: MoneyFromRubles(8, 90) == 8.90.
-func MoneyFromRubles(rub, kop int64) Money { return Money(rub*100 + kop) }
-
 // String возвращает сумму в виде "331.50".
 func (m Money) String() string {
 	sign := ""

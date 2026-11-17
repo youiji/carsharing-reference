@@ -61,19 +61,38 @@ frontend/              шаблоны и статика
 
 ## Тесты
 
-```sh
-cd backend && go test ./...                              # unit-тесты
-psql -U postgres -d carsharing -f db/checks.sql          # ограничения БД
-```
+Три уровня тестов:
 
-Интеграционные тесты (все разделы API и гонки: одновременные бронирования, смена статуса или роли во время бронирования)
-работают с реальной БД, в которой загружены `schema.sql` и `seed.sql`. Созданные тестом
-записи удаляются в конце, но лучше использовать отдельную базу:
+| Уровень | Где | Что проверяет | Нужна БД |
+|---|---|---|---|
+| Unit | `internal/*/..._test.go` | расчёт стоимости, деньги, валидация, JWT, роли, разбор запросов | нет |
+| Интеграционные | `internal/services/*_integration_test.go` | сервисы и SQL на реальной PostgreSQL, гонки (одна машина двум клиентам, смена статуса или роли во время бронирования) | `TEST_DATABASE_URL` |
+| Сквозные (e2e) | `e2e/` | весь API по HTTP: матрица доступа ролей, сценарии гостя, клиента, менеджера и администратора, единый формат ошибок, SQL-инъекции, совпадение `/api/stats` с примером в `docs/api.md` | `E2E_DATABASE_URL` |
+
+Без переменных окружения `go test ./...` запускает только unit-тесты, остальные пропускаются.
+
+Полный прогон (базы — отдельные от рабочей):
 
 ```sh
+createdb -U postgres carsharing_test
+psql -U postgres -d carsharing_test -f db/schema.sql
+psql -U postgres -d carsharing_test -f db/seed.sql
+createdb -U postgres carsharing_e2e_test          # схему и данные тесты загружают сами
+
 cd backend
 TEST_DATABASE_URL=postgres://postgres@localhost:5432/carsharing_test?sslmode=disable \
-  go test -race -run Integration -v ./internal/services
+E2E_DATABASE_URL=postgres://postgres@localhost:5432/carsharing_e2e_test?sslmode=disable \
+  go test -race -cover ./...
+```
+
+Сквозные тесты перед каждым тестом **удаляют все данные** в базе `E2E_DATABASE_URL`
+и загружают `schema.sql` и `seed.sql` заново, поэтому запускаются только на базе,
+в имени которой есть `test`. Интеграционные тесты удаляют за собой только созданные ими записи.
+
+Ограничения целостности БД проверяются отдельно:
+
+```sh
+psql -U postgres -d carsharing -f db/checks.sql
 ```
 
 ## Готовность API

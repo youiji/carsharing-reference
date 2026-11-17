@@ -11,10 +11,9 @@ import (
 	"syscall"
 	"time"
 
+	"carsharing/internal/app"
 	"carsharing/internal/config"
-	"carsharing/internal/handlers"
 	"carsharing/internal/repository"
-	"carsharing/internal/services"
 	"carsharing/internal/util"
 )
 
@@ -42,28 +41,7 @@ func run() error {
 	}
 	defer pool.Close()
 
-	tokens := util.NewTokenManager(cfg.JWTSecret, cfg.JWTTTL)
-	userRepo := repository.NewUserRepository(pool)
-	authSvc := services.NewAuthService(userRepo, tokens)
-	rentalSvc := services.NewRentalService(repository.NewRentalRepository(pool))
-	carSvc := services.NewCarService(repository.NewCarRepository(pool))
-	tariffSvc := services.NewTariffService(repository.NewTariffRepository(pool))
-	maintenanceSvc := services.NewMaintenanceService(repository.NewMaintenanceRepository(pool))
-	userSvc := services.NewUserService(userRepo)
-	statsSvc := services.NewStatsService(repository.NewStatsRepository(pool))
-
-	router := handlers.NewRouter(handlers.Deps{
-		DB:          pool,
-		Tokens:      tokens,
-		Users:       userRepo,
-		Auth:        authSvc,
-		Rentals:     rentalSvc,
-		Cars:        carSvc,
-		Tariffs:     tariffSvc,
-		Maintenance: maintenanceSvc,
-		UsersAdmin:  userSvc,
-		Stats:       statsSvc,
-	})
+	router := app.NewHandler(pool, util.NewTokenManager(cfg.JWTSecret, cfg.JWTTTL))
 
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,
