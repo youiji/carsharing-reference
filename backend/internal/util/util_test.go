@@ -101,6 +101,8 @@ func TestMapPgError(t *testing.T) {
 		{"fk on delete", &pgconn.PgError{Code: "23503", Message: `update or delete on table "cars" violates foreign key constraint "fk_rentals_car" on table "rentals"`}, "has_related_records"},
 		{"fk on insert", &pgconn.PgError{Code: "23503", Message: `insert or update on table "cars" violates foreign key constraint "fk_cars_tariff"`}, "validation_error"},
 		{"check", &pgconn.PgError{Code: "23514", ConstraintName: "chk_cars_fuel_level"}, "validation_error"},
+		{"unique tariff name (case-insensitive index)", &pgconn.PgError{Code: "23505", ConstraintName: "uq_tariffs_name"}, "name_taken"},
+		{"unknown unique — 409, not 400", &pgconn.PgError{Code: "23505", ConstraintName: "uq_cars_vin"}, "conflict"},
 		{"wrapped", fmt.Errorf("create: %w", &pgconn.PgError{Code: "23505", ConstraintName: "uq_users_driver_license"}), "license_taken"},
 	}
 	for _, tt := range tests {

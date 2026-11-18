@@ -2,10 +2,16 @@ package handlers
 
 import (
 	"context"
+	"fmt"
+	"net"
 	"net/http"
+	"strconv"
+	"strings"
+	"time"
 
 	"carsharing/internal/dto"
 	"carsharing/internal/middleware"
+	"carsharing/internal/ratelimit"
 	"carsharing/internal/util"
 )
 
@@ -17,7 +23,8 @@ type AuthService interface {
 }
 
 type AuthHandler struct {
-	svc AuthService
+	svc     AuthService
+	limiter *ratelimit.LoginLimiter
 }
 
 // Register — POST /api/auth/register.
@@ -42,11 +49,24 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		util.WriteError(w, r, err)
 		return
 	}
+	// Защита от подбора пароля: после серии неудачных попыток вход временно блокируется.
+	ip := clientIP(r)
+	if wait, ok := h.limiter.Check(ip, req.Email); !ok {
+		minutes := int((wait + time.Minute - 1) / time.Minute)
+		w.Header().Set("Retry-After", strconv.Itoa(int(wait.Seconds())+1))
+		util.WriteError(w, r, util.ErrTooManyAttempts.WithMessage(
+			fmt.Sprintf("Слишком много неудачных попыток входа. Повторите через %d мин.", minutes)))
+		return
+	}
 	resp, err := h.svc.Login(r.Context(), req)
 	if err != nil {
+		if appErr, ok := util.AsAppError(err); ok && appErr.Code == util.ErrInvalidCredentials.Code {
+			h.limiter.Fail(ip, req.Email)
+		}
 		util.WriteError(w, r, err)
 		return
 	}
+	h.limiter.Success(req.Email)
 	util.WriteJSON(w, http.StatusOK, resp)
 }
 
@@ -69,4 +89,14 @@ func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// clientIP — адрес клиента из соединения. Заголовкам X-Forwarded-For не доверяем:
+// сервер работает без прокси, а заголовок клиент может подделать.
+func clientIP(r *http.Request) string {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return strings.TrimSpace(r.RemoteAddr)
+	}
+	return host
 }

@@ -3,25 +3,19 @@
 import { api, query } from '../api.js';
 import {
   badge, confirmAction, debounce, el, emptyRow, formatDateTime, formatMoney, render,
-  RENTAL_STATUS, sortableHeaders,
+  readQuery, RENTAL_STATUS, sortableHeaders, writeQuery,
 } from '../ui.js';
 
-const state = { q: '', status: '', user_id: '', car_id: '', sort: 'id', order: 'desc' };
+const DEFAULTS = { q: '', status: '', user_id: '', car_id: '', sort: 'id', order: 'desc' };
+const state = { ...DEFAULTS };
 let table;
 
 export async function init() {
   table = document.getElementById('rentals-table');
   const form = document.getElementById('filters');
-  const p = new URLSearchParams(location.search);
-  for (const k of ['q', 'status', 'user_id', 'car_id']) state[k] = p.get(k) || '';
+  readQuery(state);
   form.q.value = state.q;
   form.status.value = state.status;
-  if (state.user_id || state.car_id) {
-    const note = document.querySelector('.filter-note');
-    note.hidden = false;
-    render(note, state.user_id ? `Аренды пользователя №${state.user_id}. ` : `Аренды автомобиля №${state.car_id}. `,
-      el('a', { href: '/rentals' }, 'Показать все'));
-  }
 
   form.addEventListener('submit', (e) => e.preventDefault());
   form.q.addEventListener('input', debounce(() => { state.q = form.q.value.trim(); load(); }));
@@ -31,15 +25,37 @@ export async function init() {
 }
 
 async function load() {
+  writeQuery(state, DEFAULTS);
   const tbody = table.querySelector('tbody');
   try {
     const { items, total } = await api.get(`/rentals${query(state)}`);
     render(tbody, items.length ? items.map(row) : emptyRow(table, 'Аренды не найдены.'));
-    const revenue = items.reduce((s, r) => s + (r.total_cost ? Math.round(r.total_cost * 100) : 0), 0) / 100;
-    document.querySelector('.rentals-summary').textContent = `Найдено: ${total}, сумма завершённых: ${formatMoney(revenue)}`;
+    showFilterNote(items);
+    // Начислено: стоимость завершённых поездок и списанное при отмене ожидание.
+    const charged = items.reduce((s, r) => s + (r.total_cost ? Math.round(r.total_cost * 100) : 0), 0) / 100;
+    document.querySelector('.rentals-summary').textContent = `Найдено: ${total}, начислено: ${formatMoney(charged)}`;
   } catch (err) {
     render(tbody, emptyRow(table, err.message));
   }
+}
+
+// Пояснение при переходе по ссылке «Аренды пользователя» или «Аренды автомобиля»:
+// имя клиента или автомобиль берутся из найденных аренд.
+function showFilterNote(items) {
+  const note = document.querySelector('.filter-note');
+  if (!state.user_id && !state.car_id) {
+    note.hidden = true;
+    return;
+  }
+  let subject;
+  if (state.user_id) {
+    subject = items[0] ? `клиента ${items[0].user.full_name}` : `пользователя №${state.user_id}`;
+  } else {
+    subject = items[0] ? `автомобиля ${items[0].car.brand_model}, ${items[0].car.plate_number}` : `автомобиля №${state.car_id}`;
+  }
+  note.hidden = false;
+  render(note, `Показаны аренды ${subject}. `,
+    el('a', { href: '/rentals', on: { click: (e) => { e.preventDefault(); state.user_id = ''; state.car_id = ''; load(); } } }, 'Показать все'));
 }
 
 function row(r) {
@@ -59,7 +75,8 @@ function row(r) {
 async function cancel(r) {
   if (await confirmAction({
     title: 'Отмена бронирования',
-    text: `Отменить бронирование клиента ${r.user.full_name}: ${r.car.brand_model} (${r.car.plate_number})? Автомобиль станет свободен.`,
+    text: [`Отменить бронирование клиента ${r.user.full_name}: ${r.car.brand_model} (${r.car.plate_number})?`,
+      'Отмена сотрудником бесплатна для клиента: ожидание не списывается. Автомобиль станет свободен.'],
     confirmText: 'Отменить бронирование',
     danger: true,
     action: () => api.post(`/rentals/${r.id}/cancel`),

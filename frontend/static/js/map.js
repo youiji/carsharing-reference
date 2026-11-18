@@ -86,8 +86,6 @@ export function carIcon(status) {
   });
 }
 
-export const leafletReady = () => Boolean(window.L);
-
 /**
  * Группа маркеров с объединением близких машин (плагин Leaflet.markercluster).
  * При отдалении машины собираются в квадрат с числом, при приближении рассыпаются;

@@ -132,7 +132,8 @@ async function book(car) {
     text: [
       el('p', {}, el('b', { text: `${car.brand_model}, ${car.plate_number}` })),
       `Тариф «${car.tariff.name}»: ${formatMoney(car.tariff.price_per_min)} за минуту поездки.`,
-      `С момента бронирования до начала поездки начисляется ожидание: ${formatMoney(car.tariff.waiting_per_min)} за минуту.`,
+      `Бронирование действует 20 минут. До начала поездки оплачивается ожидание: ${formatMoney(car.tariff.waiting_per_min)} за минуту,`
+        + ' в том числе если вы отмените бронирование или оно истечёт.',
     ],
     confirmText: 'Забронировать',
   });

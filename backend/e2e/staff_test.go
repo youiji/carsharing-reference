@@ -164,10 +164,16 @@ func TestManager(t *testing.T) {
 			t.Errorf("фильтры status и car_id: %+v", rs)
 		}
 
+		// Поиск по номеру латиницей: «x333» находит Х333ХХ777.
+		m1.call("GET", "/api/rentals?q=x333", nil).ok(200).into(&rs)
+		if rs.Total != 1 || rs.Items[0].ID != olegRental {
+			t.Errorf("поиск по номеру латиницей: %+v", rs)
+		}
+
 		var r rental
 		m1.call("POST", fmt.Sprintf("/api/rentals/%d/cancel", olegRental), nil).ok(200).into(&r)
-		if r.Status != "cancelled" {
-			t.Errorf("отмена менеджером: %+v", r)
+		if r.Status != "cancelled" || r.TotalCost == nil || r.TotalCost.String() != "0.00" {
+			t.Errorf("отмена менеджером бесплатна для клиента: %+v", r)
 		}
 		var c car
 		m1.call("GET", "/api/cars/12", nil).ok(200).into(&c)
@@ -218,6 +224,8 @@ func TestAdmin(t *testing.T) {
 
 		admin.call("PATCH", "/api/users/1/role", map[string]string{"role": "client"}).fails(403, "cannot_change_own_role")
 		admin.call("PATCH", "/api/users/4/role", map[string]string{"role": "manager"}).fails(409, "user_has_active_rental")
+		// Та же роль при открытой аренде — ничего не меняется, ошибки нет.
+		admin.call("PATCH", "/api/users/4/role", map[string]string{"role": "client"}).ok(200)
 		admin.call("PATCH", "/api/users/4/role", map[string]string{"role": "root"}).fails(400, "validation_error")
 		admin.call("PATCH", "/api/users/999999/role", map[string]string{"role": "client"}).fails(404, "not_found")
 	})

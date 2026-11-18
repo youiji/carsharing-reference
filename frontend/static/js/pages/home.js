@@ -1,7 +1,7 @@
 // Главная: приветствие и сводка по роли — текущая аренда клиента
 // или ключевые показатели для менеджера и администратора.
 import { api } from '../api.js';
-import { badge, el, formatDateTime, formatMoney, render, RENTAL_STATUS } from '../ui.js';
+import { badge, el, formatDateTime, formatMoney, formatTime, render, RENTAL_STATUS } from '../ui.js';
 
 export async function init({ user }) {
   if (!user) return;
@@ -23,7 +23,7 @@ async function currentRental() {
     }
     const since = open.status === 'active'
       ? `Поездка началась ${formatDateTime(open.started_at)}`
-      : `Забронировано ${formatDateTime(open.booked_at)}`;
+      : `Забронировано ${formatDateTime(open.booked_at)}, бронирование действует до ${formatTime(open.expires_at)}`;
     render(box, el('div', { className: 'card rental-card' },
       el('div', { className: 'rental-card-head' },
         el('h3', { text: `${open.car.brand_model}, ${open.car.plate_number}` }),
@@ -40,13 +40,14 @@ async function statsSummary() {
   const box = document.querySelector('.home-stats');
   try {
     const s = await api.get('/stats');
-    const revenue = s.revenue_by_tariff.reduce((sum, t) => sum + t.revenue, 0);
+    // Сумма в копейках, как на странице статистики: без накопления ошибок дробных чисел.
+    const revenue = s.revenue_by_tariff.reduce((sum, t) => sum + Math.round(t.revenue * 100), 0) / 100;
     render(box,
       tile('Свободно автомобилей', s.cars_by_status.available, `из ${Object.values(s.cars_by_status).reduce((a, b) => a + b, 0)}`),
       tile('Бронирований', s.rentals_by_status.booked),
       tile('В поездке', s.rentals_by_status.active),
       tile('На обслуживании', s.cars_by_status.maintenance),
-      tile('Выручка (завершённые)', formatMoney(revenue)));
+      tile('Выручка', formatMoney(revenue), 'поездки и платные отмены'));
   } catch (err) {
     render(box, el('p', { className: 'alert alert-error', text: err.message }));
   }

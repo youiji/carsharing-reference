@@ -39,7 +39,7 @@ var foreignKeyFields = map[string]string{
 // MapPgError переводит ошибку PostgreSQL в AppError (docs/api.md, раздел 1.4).
 // Ошибки, не относящиеся к ограничениям целостности, возвращаются без изменений.
 //
-//   - 23505 (уникальность)  → 409 с кодом по имени ограничения;
+//   - 23505 (уникальность)  → 409 с кодом по имени ограничения (неизвестное — 409 conflict);
 //   - 23503 при удалении    → 409 has_related_records;
 //   - 23503 при вставке     → 400 validation_error (ссылка на несуществующий объект);
 //   - 23514 (CHECK)         → 400 validation_error.
@@ -53,7 +53,7 @@ func MapPgError(err error) error {
 		if appErr, ok := uniqueConstraintErrors[pgErr.ConstraintName]; ok {
 			return appErr
 		}
-		return ErrValidation.WithMessage("Значение уже используется")
+		return ErrConflict
 	case pgForeignKeyViolation:
 		// PostgreSQL: "update or delete on table ... violates foreign key constraint ..."
 		if strings.HasPrefix(pgErr.Message, "update or delete") {

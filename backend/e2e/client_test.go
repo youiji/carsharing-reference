@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"testing"
+	"time"
 )
 
 // Сценарии клиента: профиль, каталог, полный цикл аренды, история,
@@ -72,8 +73,11 @@ func TestClient(t *testing.T) {
 		var r rental
 		dmitry.call("POST", "/api/rentals", map[string]any{"car_id": freeEconomy}).ok(201).into(&r)
 		if r.Status != "booked" || r.User.ID != dmitryID || r.StartedAt != nil || r.TotalCost != nil ||
-			money(t, r.PricePerMin) != 890 || money(t, r.WaitingPerMin) != 200 {
+			money(t, r.PricePerMin) != 890 || money(t, r.WaitingPerMin) != 200 || r.ExpiresAt == nil {
 			t.Fatalf("бронирование: %+v", r)
+		}
+		if got := at(t, *r.ExpiresAt).Sub(at(t, r.BookedAt)); got != 20*time.Minute {
+			t.Errorf("бронирование действует %v, ожидалось 20 минут", got)
 		}
 		path := fmt.Sprintf("/api/rentals/%d", r.ID)
 
@@ -103,9 +107,14 @@ func TestClient(t *testing.T) {
 		// Клиент пытается подставить полный бак: поле игнорируется, топливо остаётся прежним (78%).
 		dmitry.call("POST", path+"/finish", map[string]any{"latitude": 55.7601, "longitude": 37.6195, "fuel_level": 100}).
 			ok(200).into(&r)
-		// Поездка короче минуты: 1 минута поездки + 1 минута ожидания = 8.90 + 2.00
-		if r.Status != "completed" || r.EndedAt == nil || r.TotalCost == nil || money(t, *r.TotalCost) != 1090 {
+		if r.Status != "completed" || r.EndedAt == nil || r.TotalCost == nil || r.ExpiresAt != nil {
 			t.Fatalf("завершение: %+v (total_cost %v)", r, r.TotalCost)
+		}
+		// Стоимость по правилу 2.3, по меткам времени из ответа (тест не зависит от скорости машины).
+		booked, started, ended := at(t, r.BookedAt), at(t, *r.StartedAt), at(t, *r.EndedAt)
+		want := 890*max(1, ceilMinutes(ended.Sub(started))) + 200*ceilMinutes(started.Sub(booked))
+		if got := money(t, *r.TotalCost); got != want {
+			t.Errorf("стоимость %d коп., ожидалось %d", got, want)
 		}
 		dmitry.call("GET", fmt.Sprintf("/api/cars/%d", freeEconomy), nil).ok(200).into(&c)
 		if c.Status != "available" || c.FuelLevel != 78 || c.Latitude.String() != "55.7601" {
@@ -115,8 +124,12 @@ func TestClient(t *testing.T) {
 		// Бронирование и отмена
 		dmitry.call("POST", "/api/rentals", map[string]any{"car_id": freeComfort}).ok(201).into(&r)
 		dmitry.call("POST", fmt.Sprintf("/api/rentals/%d/cancel", r.ID), nil).ok(200).into(&r)
-		if r.Status != "cancelled" {
-			t.Errorf("отмена: %+v", r)
+		if r.Status != "cancelled" || r.EndedAt == nil || r.TotalCost == nil || r.StartedAt != nil {
+			t.Fatalf("отмена: %+v", r)
+		}
+		// Клиенту списывается ожидание: 3.00 ₽ (Комфорт) за каждую начатую минуту.
+		if got, want := money(t, *r.TotalCost), 300*ceilMinutes(at(t, *r.EndedAt).Sub(at(t, r.BookedAt))); got != want || got == 0 {
+			t.Errorf("списание при отмене %d коп., ожидалось %d", got, want)
 		}
 
 		var my list[rental]

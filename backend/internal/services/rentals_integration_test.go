@@ -21,6 +21,7 @@ import (
 	"carsharing/internal/dto"
 	"carsharing/internal/models"
 	"carsharing/internal/repository"
+	"carsharing/internal/util"
 )
 
 type rentalEnv struct {
@@ -330,5 +331,83 @@ func TestIntegrationConcurrentSameUser(t *testing.T) {
 	e.pool.QueryRow(e.ctx, `SELECT id FROM rentals WHERE user_id = $1 AND status = 'booked'`, u.ID).Scan(&rentalID)
 	if _, err := e.svc.Cancel(e.ctx, u, rentalID); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// Срок бронирования (20 минут) и списание ожидания при отмене.
+func TestIntegrationBookingExpiry(t *testing.T) {
+	e := newRentalEnv(t)
+	carID := e.availableCar("Н999НН777") // Genesis G80, Бизнес: ожидание 5.00 ₽/мин
+	u := e.client(true)
+	manager := models.User{ID: 2, Role: models.RoleManager}
+	book := func() dto.Rental {
+		t.Helper()
+		r, err := e.svc.Book(e.ctx, u, dto.CreateRentalRequest{CarID: carID})
+		if err != nil {
+			t.Fatalf("Book: %v", err)
+		}
+		if r.ExpiresAt == nil || !r.ExpiresAt.Equal(r.BookedAt.Add(20*time.Minute)) {
+			t.Fatalf("expires_at: %v", r.ExpiresAt)
+		}
+		return r
+	}
+	cost := func(r dto.Rental) util.Money {
+		if r.TotalCost == nil {
+			t.Fatalf("у отменённой аренды нет total_cost: %+v", r)
+		}
+		return *r.TotalCost
+	}
+
+	// Клиент отменяет через 7 мин 30 с: 8 минут × 5.00 = 40.00.
+	r := book()
+	e.clock = e.clock.Add(7*time.Minute + 30*time.Second)
+	c, err := e.svc.Cancel(e.ctx, u, r.ID)
+	if err != nil || c.Status != models.RentalCancelled || cost(c) != 4000 || c.EndedAt == nil || !c.EndedAt.Equal(e.clock) {
+		t.Fatalf("отмена клиентом: %+v, %v", c, err)
+	}
+
+	// Менеджер отменяет — бесплатно для клиента.
+	r = book()
+	e.clock = e.clock.Add(3 * time.Minute)
+	if c, err = e.svc.Cancel(e.ctx, manager, r.ID); err != nil || cost(c) != 0 {
+		t.Fatalf("отмена менеджером: %+v, %v", c, err)
+	}
+
+	// Старт после срока: 409 booking_expired, бронирование отменено с 20 минутами ожидания.
+	r = book()
+	e.clock = e.clock.Add(21 * time.Minute)
+	_, err = e.svc.Start(e.ctx, u, r.ID)
+	e.expectCode("старт после срока", err, "booking_expired")
+	c, _ = e.svc.Get(e.ctx, u, r.ID)
+	if c.Status != models.RentalCancelled || cost(c) != 10000 || !c.EndedAt.Equal(r.BookedAt.Add(20*time.Minute)) {
+		t.Fatalf("просроченное бронирование после старта: %+v", c)
+	}
+	if s := e.carStatus(carID); s != models.CarAvailable {
+		t.Fatalf("машина после истечения брони: %s", s)
+	}
+
+	// Фоновая отмена ровно по истечении срока.
+	r = book()
+	e.clock = e.clock.Add(20 * time.Minute)
+	n, err := e.svc.ExpireBookings(e.ctx)
+	if err != nil || n < 1 {
+		t.Fatalf("ExpireBookings: %d, %v", n, err)
+	}
+	if c, _ = e.svc.Get(e.ctx, u, r.ID); c.Status != models.RentalCancelled || cost(c) != 10000 {
+		t.Fatalf("фоновая отмена: %+v", c)
+	}
+
+	// Отмена клиентом после срока — как просроченное бронирование (не больше 20 минут).
+	r = book()
+	e.clock = e.clock.Add(45 * time.Minute)
+	if c, err = e.svc.Cancel(e.ctx, u, r.ID); err != nil || cost(c) != 10000 || !c.EndedAt.Equal(r.BookedAt.Add(20*time.Minute)) {
+		t.Fatalf("отмена после срока: %+v, %v", c, err)
+	}
+
+	// Просроченное бронирование не мешает новому: Book сначала снимает просроченные.
+	book()
+	e.clock = e.clock.Add(25 * time.Minute)
+	if _, err := e.svc.Book(e.ctx, u, dto.CreateRentalRequest{CarID: carID}); err != nil {
+		t.Fatalf("бронирование после просроченного: %v", err)
 	}
 }

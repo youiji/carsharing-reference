@@ -38,7 +38,8 @@ var (
 	all   = []string{models.RoleClient, models.RoleManager, models.RoleAdmin}
 )
 
-// Pages — все страницы. Порядок пунктов меню — как в docs/role_matrix.md, раздел 3.
+// Pages — все страницы. Пункты меню идут в порядке docs/role_matrix.md, раздел 3,
+// но «Об авторе» стоит последним: это справочная страница, а не рабочий раздел.
 var Pages = []Page{
 	{Path: "/", Name: "home", Title: "Главная"},
 	{Path: "/login", Name: "login", Title: "Вход", Roles: []string{RoleGuest}, Menu: true},
@@ -87,11 +88,7 @@ func New(dir string) (*Handler, error) {
 	h := &Handler{mux: http.NewServeMux(), pages: map[string]*template.Template{}}
 	layout := filepath.Join(tplDir, "layout.html")
 	parse := func(name string) (*template.Template, error) {
-		file := filepath.Join(tplDir, "pages", name+".html")
-		if _, err := os.Stat(file); err != nil {
-			file = filepath.Join(tplDir, "pages", "stub.html") // раздел ещё не готов
-		}
-		return template.ParseFiles(layout, file)
+		return template.ParseFiles(layout, filepath.Join(tplDir, "pages", name+".html"))
 	}
 
 	var menu []menuItem
@@ -123,8 +120,20 @@ func New(dir string) (*Handler, error) {
 	}
 
 	notFound := pageData{Page: notFoundPage, Menu: menu, Status: http.StatusNotFound}
-	h.mux.Handle("GET /static/", http.StripPrefix("/static/", noDirListing(http.FileServer(http.Dir(staticDir)))))
-	h.mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { h.render(w, notFound) })
+	h.mux.Handle("GET /static/", http.StripPrefix("/static/", staticFiles(http.FileServer(http.Dir(staticDir)))))
+	h.mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		// Страница есть, но метод не GET (например, POST /login) — 405, а не «не найдено».
+		if r.Method != http.MethodGet && r.Method != http.MethodHead {
+			probe := r.Clone(r.Context())
+			probe.Method = http.MethodGet
+			if _, pattern := h.mux.Handler(probe); pattern != "/" {
+				w.Header().Set("Allow", "GET, HEAD")
+				http.Error(w, "Метод не поддерживается", http.StatusMethodNotAllowed)
+				return
+			}
+		}
+		h.render(w, notFound)
+	})
 	return h, nil
 }
 
@@ -152,20 +161,25 @@ func (h *Handler) render(w http.ResponseWriter, data pageData) {
 
 // contentSecurityPolicy — защита от XSS на уровне браузера: скрипты и стили
 // загружаются только с нашего сервера, встроенные скрипты запрещены. Даже если
-// в данные попадёт <script>, браузер его не выполнит. Векторная карта (стиль, тайлы, шрифты) — с OpenFreeMap, запасная растровая — со Stadia Maps;
-// воркер MapLibre загружается только с нашего сервера.
+// в данные попадёт <script>, браузер его не выполнит.
+// Векторная карта (стиль, тайлы, шрифты) — с OpenFreeMap, запасная растровая —
+// со Stadia Maps; воркер MapLibre загружается только с нашего сервера.
 const contentSecurityPolicy = "default-src 'self'; script-src 'self'; style-src 'self'; " +
 	"img-src 'self' data: https://tiles.stadiamaps.com https://tiles.openfreemap.org; " +
 	"connect-src 'self' https://tiles.openfreemap.org; worker-src 'self'; " +
 	"object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
 
-// noDirListing запрещает просмотр содержимого каталогов статики.
-func noDirListing(next http.Handler) http.Handler {
+// staticFiles отдаёт статику: без просмотра содержимого каталогов и с
+// Cache-Control: no-cache — браузер хранит файл, но перед использованием сверяет
+// его с сервером (по Last-Modified, ответ 304). После обновления кода браузер
+// сразу получает новые скрипты и стили, а неизменённые файлы повторно не скачиваются.
+func staticFiles(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "" || strings.HasSuffix(r.URL.Path, "/") {
 			http.NotFound(w, r)
 			return
 		}
+		w.Header().Set("Cache-Control", "no-cache")
 		next.ServeHTTP(w, r)
 	})
 }

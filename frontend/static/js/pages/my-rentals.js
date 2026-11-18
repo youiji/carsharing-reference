@@ -2,7 +2,7 @@
 // на лету и история поездок с фильтром и сортировкой.
 import { api, query } from '../api.js';
 import {
-  badge, busy, confirmDialog, el, emptyRow, formatDateTime, formatMinutes, formatMoney,
+  badge, busy, confirmDialog, el, emptyRow, formatDateTime, formatMinutes, formatMoney, formatTime,
   openDialog, render, RENTAL_STATUS, sortableHeaders, toast,
 } from '../ui.js';
 import { carIcon, createMap } from '../map.js';
@@ -45,12 +45,27 @@ function renderCurrent(box, r) {
   const estimate = el('span', { className: 'tile-value' });
   const waitEl = el('span', { className: 'tile-value' });
   const rideEl = el('span', { className: 'tile-value' });
+  const deadline = el('p', { className: 'muted' });
+  let reloadScheduled = false;
 
   const tick = () => {
-    const e = estimateCost(r, new Date());
+    const now = new Date();
+    const e = estimateCost(r, now);
     estimate.textContent = formatMoney(e.cost);
     waitEl.textContent = formatMinutes(e.waitMin);
     rideEl.textContent = booked ? '—' : formatMinutes(e.rideMin);
+    if (!booked) return;
+    const left = Math.ceil((new Date(r.expires_at) - now) / 60000);
+    if (left > 0) {
+      deadline.textContent = `Бронирование действует до ${formatTime(r.expires_at)}: осталось ${formatMinutes(left)}. `
+        + 'Ожидание оплачивается поминутно, в том числе при отмене.';
+    } else {
+      deadline.textContent = 'Срок бронирования истёк: оно будет отменено, ожидание за 20 минут списано.';
+      if (!reloadScheduled) {
+        reloadScheduled = true;
+        setTimeout(refresh, 20000); // сервер снимает просроченные бронирования раз в 15 секунд
+      }
+    }
   };
   tick();
   ticker = setInterval(tick, 1000);
@@ -67,27 +82,32 @@ function renderCurrent(box, r) {
       el('h3', { text: `${r.car.brand_model}, ${r.car.plate_number}` }),
       badge(r.status, RENTAL_STATUS)),
     el('p', { className: 'muted', text: booked
-      ? `Забронировано ${formatDateTime(r.booked_at)}. Пока поездка не началась, начисляется ожидание.`
+      ? `Забронировано ${formatDateTime(r.booked_at)}.`
       : `Поездка началась ${formatDateTime(r.started_at)}.` }),
+    booked && deadline,
     el('div', { className: 'tiles' },
       el('div', { className: 'tile' }, el('span', { className: 'tile-label', text: 'Ожидание' }), waitEl,
         el('span', { className: 'tile-hint', text: `${formatMoney(r.waiting_per_min)} / мин` })),
       el('div', { className: 'tile' }, el('span', { className: 'tile-label', text: 'Поездка' }), rideEl,
         el('span', { className: 'tile-hint', text: `${formatMoney(r.price_per_min)} / мин` })),
       el('div', { className: 'tile tile-accent' }, el('span', { className: 'tile-label', text: 'Стоимость сейчас' }), estimate,
-        el('span', { className: 'tile-hint', text: 'Итог рассчитает сервер при завершении' }))),
+        el('span', { className: 'tile-hint', text: booked
+          ? 'Столько будет списано, если отменить бронирование сейчас'
+          : 'Итог рассчитает сервер при завершении' }))),
     el('div', { className: 'btn-group rental-actions' }, actions)));
 }
 
 /**
  * Оценка стоимости по правилу docs/api.md, раздел 2.3 (окончательную сумму считает сервер):
- * минуты ожидания = ⌈старт − бронирование⌉, минуты поездки = max(1, ⌈сейчас − старт⌉).
+ * минуты ожидания = ⌈старт − бронирование⌉ (у бронирования — до текущего момента,
+ * но не больше срока брони, 20 минут), минуты поездки = max(1, ⌈сейчас − старт⌉).
  */
 function estimateCost(r, now) {
   const ceilMin = (ms) => (ms > 0 ? Math.ceil(ms / 60000) : 0);
   const booked = new Date(r.booked_at);
   const started = r.started_at ? new Date(r.started_at) : null;
-  const waitMin = ceilMin((started || now) - booked);
+  const waitEnd = started || (r.expires_at ? new Date(Math.min(now, new Date(r.expires_at))) : now);
+  const waitMin = ceilMin(waitEnd - booked);
   const rideMin = started ? Math.max(1, ceilMin(now - started)) : 0;
   const kop = (x) => Math.round(x * 100);
   const cost = (kop(r.waiting_per_min) * waitMin + kop(r.price_per_min) * rideMin) / 100;
@@ -107,8 +127,9 @@ async function start(r, button) {
     toast('Поездка началась. Хорошей дороги!', 'success');
     await refresh();
   } catch (err) {
-    toast(err.message, 'error');
-    busy(button, false);
+    toast(err.message, 'error', 8000);
+    if (err.code === 'booking_expired') await refresh(); // бронирование уже отменено сервером
+    else busy(button, false);
   }
 }
 
@@ -116,15 +137,16 @@ async function cancel(r, button) {
   const e = estimateCost(r, new Date());
   const ok = await confirmDialog({
     title: 'Отменить бронирование',
-    text: `Отменить бронирование ${r.car.brand_model} (${r.car.plate_number})? Автомобиль станет доступен другим клиентам.`,
+    text: [`Отменить бронирование ${r.car.brand_model} (${r.car.plate_number})? Автомобиль станет доступен другим клиентам.`,
+      `Будет списано ожидание: ${formatMinutes(e.waitMin)} × ${formatMoney(r.waiting_per_min)} ≈ ${formatMoney(e.cost)}.`],
     confirmText: 'Отменить бронирование',
     danger: true,
   });
   if (!ok) return;
   busy(button, true);
   try {
-    await api.post(`/rentals/${r.id}/cancel`);
-    toast(`Бронирование отменено (ожидание ${formatMinutes(e.waitMin)})`, 'info');
+    const done = await api.post(`/rentals/${r.id}/cancel`);
+    toast(`Бронирование отменено, списано ${formatMoney(done.total_cost)}`, 'info');
     await refresh();
   } catch (err) {
     toast(err.message, 'error');
@@ -169,6 +191,7 @@ async function finishDialog(r) {
     showCoords();
   });
   setTimeout(() => map.invalidateSize(), 50); // карта в окне: пересчитать размер после показа
+  d.dialog.addEventListener('close', () => map.remove()); // освободить WebGL-контекст подложки
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();

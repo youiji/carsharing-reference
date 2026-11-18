@@ -15,6 +15,11 @@
 --     new.client@example.com — без водительского удостоверения
 --
 -- Пароли хранятся как bcrypt-хеши (cost 10), формат совместим с Go (golang.org/x/crypto/bcrypt).
+--
+-- Текущие поездки и бронирования отсчитываются от момента загрузки (now()), поэтому
+-- данные «стареют»: перед демонстрацией загрузите этот файл заново (таблицы очищаются).
+-- Бронирования действуют 20 минут: через 15–18 минут после загрузки сервер отменит
+-- оба тестовых бронирования и спишет ожидание.
 -- =============================================================
 
 \set ON_ERROR_STOP on
@@ -71,16 +76,20 @@ ORDER BY v.ord;  -- id назначаются в порядке строк VALUE
 
 -- ---------- rentals ----------
 -- Тариф и цены копируются из автомобиля (снимок на момент создания аренды).
--- total_cost для завершённых аренд: цена_минуты * минуты_поездки + цена_ожидания * минуты_ожидания
--- (минуты ожидания = от бронирования до старта). Это упрощённая формула для тестовых данных;
--- итоговая логика расчёта будет в слое services на Go.
+-- total_cost завершённых аренд: цена_минуты × минуты_поездки + цена_ожидания × минуты_ожидания
+-- (минуты ожидания — от бронирования до старта); у отменённых — цена_ожидания × минуты
+-- от бронирования до отмены. Все времена в данных — целые минуты, поэтому формула совпадает
+-- с расчётом сервера (docs/api.md, раздел 2.3), где неполная минута округляется вверх.
 INSERT INTO rentals (user_id, tariff_id, car_id, booked_at, started_at, ended_at,
                      price_per_min, waiting_per_min, total_cost, status)
 SELECT u.id, t.id, c.id, v.booked_at, v.started_at, v.ended_at,
        t.price_per_min, t.waiting_per_min,
-       CASE WHEN v.status = 'completed' THEN
-            round((t.price_per_min   * extract(epoch FROM v.ended_at   - v.started_at) / 60
-                 + t.waiting_per_min * extract(epoch FROM v.started_at - v.booked_at)  / 60)::numeric, 2)
+       CASE v.status
+            WHEN 'completed' THEN
+                round((t.price_per_min   * extract(epoch FROM v.ended_at   - v.started_at) / 60
+                     + t.waiting_per_min * extract(epoch FROM v.started_at - v.booked_at)  / 60)::numeric, 2)
+            WHEN 'cancelled' THEN
+                round((t.waiting_per_min * extract(epoch FROM v.ended_at - v.booked_at) / 60)::numeric, 2)
        END,
        v.status
 FROM (VALUES
@@ -92,8 +101,8 @@ FROM (VALUES
     (6, 'oleg.novikov@example.com', 'М505ММ777', timestamptz '2026-11-03 14:00+03', timestamptz '2026-11-03 14:12+03', timestamptz '2026-11-03 15:30+03', 'completed'),
     (7, 'anna.sidorova@example.com', 'К777КК777', timestamptz '2026-11-05 19:00+03', timestamptz '2026-11-05 19:06+03', timestamptz '2026-11-05 20:15+03', 'completed'),
     (8, 'maria.volkova@example.com', 'А101АА777', timestamptz '2026-11-08 11:20+03', timestamptz '2026-11-08 11:25+03', timestamptz '2026-11-08 11:58+03', 'completed'),
-    (9, 'dmitry.ivanov@example.com', 'А444АА777', timestamptz '2026-11-06 10:00+03', NULL::timestamptz, NULL::timestamptz, 'cancelled'),
-    (10, 'oleg.novikov@example.com', 'М888ММ777', timestamptz '2026-11-09 16:30+03', NULL::timestamptz, NULL::timestamptz, 'cancelled'),
+    (9, 'dmitry.ivanov@example.com', 'А444АА777', timestamptz '2026-11-06 10:00+03', NULL::timestamptz, timestamptz '2026-11-06 10:12+03', 'cancelled'),
+    (10, 'oleg.novikov@example.com', 'М888ММ777', timestamptz '2026-11-09 16:30+03', NULL::timestamptz, timestamptz '2026-11-09 16:45+03', 'cancelled'),
     (11, 'ivan.petrov@example.com', 'Е303ЕЕ777', now() - interval '35 minutes', now() - interval '25 minutes', NULL::timestamptz, 'active'),
     (12, 'anna.sidorova@example.com', 'Т111ТТ777', now() - interval '50 minutes', now() - interval '40 minutes', NULL::timestamptz, 'active'),
     (13, 'maria.volkova@example.com', 'К404КК777', now() - interval '5 minutes', NULL::timestamptz, NULL::timestamptz, 'booked'),

@@ -52,6 +52,7 @@ type Rental struct {
 	Car           RentalCar   `json:"car"`
 	TariffID      int64       `json:"tariff_id"`
 	BookedAt      time.Time   `json:"booked_at"`
+	ExpiresAt     *time.Time  `json:"expires_at"` // только у бронирования: когда оно отменится
 	StartedAt     *time.Time  `json:"started_at"`
 	EndedAt       *time.Time  `json:"ended_at"`
 	PricePerMin   util.Money  `json:"price_per_min"`
@@ -61,7 +62,13 @@ type Rental struct {
 }
 
 func NewRental(r models.Rental) Rental {
+	var expires *time.Time
+	if r.Status == models.RentalBooked {
+		t := r.BookedAt.Add(models.BookingTTL)
+		expires = &t
+	}
 	return Rental{
+		ExpiresAt:     expires,
 		ID:            r.ID,
 		User:          RentalUser{ID: r.UserID, FullName: r.UserFullName},
 		Car:           RentalCar{ID: r.CarID, BrandModel: r.CarBrandModel, PlateNumber: r.CarPlateNumber},

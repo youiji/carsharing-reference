@@ -334,6 +334,8 @@ type rental struct {
 	ID            int64              `json:"id"`
 	User          struct{ ID int64 } `json:"user"`
 	Car           struct{ ID int64 } `json:"car"`
+	BookedAt      string             `json:"booked_at"`
+	ExpiresAt     *string            `json:"expires_at"`
 	StartedAt     *string            `json:"started_at"`
 	EndedAt       *string            `json:"ended_at"`
 	PricePerMin   json.Number        `json:"price_per_min"`
@@ -362,4 +364,22 @@ func money(t *testing.T, n json.Number) int64 {
 		t.Fatal(err)
 	}
 	return int64(m)
+}
+
+// at разбирает время из ответа API (RFC 3339).
+func at(t *testing.T, s string) time.Time {
+	t.Helper()
+	v, err := time.Parse(time.RFC3339Nano, s)
+	if err != nil {
+		t.Fatalf("время %q: %v", s, err)
+	}
+	return v
+}
+
+// ceilMinutes — округление длительности вверх до минут, как в docs/api.md, раздел 2.3.
+func ceilMinutes(d time.Duration) int64 {
+	if d <= 0 {
+		return 0
+	}
+	return int64((d + time.Minute - 1) / time.Minute)
 }

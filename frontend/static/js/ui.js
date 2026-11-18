@@ -122,10 +122,12 @@ export function busy(button, on) {
 const moneyFmt = new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 2 });
 const dateTimeFmt = new Intl.DateTimeFormat('ru-RU', { dateStyle: 'short', timeStyle: 'short' });
 const dateFmt = new Intl.DateTimeFormat('ru-RU', { dateStyle: 'long' });
+const timeFmt = new Intl.DateTimeFormat('ru-RU', { timeStyle: 'short' });
 
 export const formatMoney = (n) => (n === null || n === undefined ? '—' : moneyFmt.format(n));
 export const formatDateTime = (iso) => (iso ? dateTimeFmt.format(new Date(iso)) : '—');
 export const formatDate = (iso) => (iso ? dateFmt.format(new Date(iso)) : '—');
+export const formatTime = (iso) => (iso ? timeFmt.format(new Date(iso)) : '—');
 
 // ---------- Подписи ----------
 
@@ -322,4 +324,25 @@ export async function confirmAction({ title, text, confirmText, danger, action, 
     toast(err.message, 'error', 8000);
     return false;
   }
+}
+
+// ---------- Фильтры в адресной строке ----------
+// Обновление страницы, ссылка или кнопка «Назад» сохраняют фильтры и сортировку.
+
+/** Заполняет state значениями из адресной строки (только известные ключи). */
+export function readQuery(state) {
+  const params = new URLSearchParams(location.search);
+  for (const key of Object.keys(state)) {
+    if (params.has(key)) state[key] = params.get(key);
+  }
+}
+
+/** Записывает state в адресную строку, пропуская пустые значения и значения по умолчанию. */
+export function writeQuery(state, defaults = {}) {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(state)) {
+    if (value !== '' && value !== null && value !== undefined && value !== defaults[key]) params.set(key, value);
+  }
+  const qs = params.toString();
+  history.replaceState(null, '', `${location.pathname}${qs ? `?${qs}` : ''}`);
 }

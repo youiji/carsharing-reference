@@ -14,6 +14,11 @@ const (
 	RentalCancelled = "cancelled"
 )
 
+// BookingTTL — сколько действует бронирование. Пока поездка не началась, ожидание
+// оплачивается поминутно; по истечении срока бронирование отменяется автоматически
+// и клиенту списывается ожидание за весь срок (docs/api.md, раздел 2.3).
+const BookingTTL = 20 * time.Minute
+
 // RentalStatuses — все допустимые статусы аренды.
 var RentalStatuses = []string{RentalBooked, RentalActive, RentalCompleted, RentalCancelled}
 
@@ -26,10 +31,10 @@ type Rental struct {
 	CarID         int64
 	BookedAt      time.Time
 	StartedAt     *time.Time
-	EndedAt       *time.Time
+	EndedAt       *time.Time // конец поездки или момент отмены бронирования
 	PricePerMin   util.Money // снимок цены тарифа на момент бронирования
 	WaitingPerMin util.Money
-	TotalCost     *util.Money
+	TotalCost     *util.Money // стоимость поездки или списанное при отмене ожидание
 	Status        string
 
 	UserFullName   string

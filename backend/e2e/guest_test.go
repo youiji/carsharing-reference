@@ -137,4 +137,39 @@ func TestSiteAndSecurityHeaders(t *testing.T) {
 	if resp := get("/api/nope"); resp.StatusCode != 404 || !strings.HasPrefix(resp.Header.Get("Content-Type"), "application/json") {
 		t.Errorf("неизвестный путь API должен отвечать JSON: %d %s", resp.StatusCode, resp.Header.Get("Content-Type"))
 	}
+	if resp := get("/static/js/app.js"); resp.Header.Get("Cache-Control") != "no-cache" {
+		t.Errorf("статика должна перепроверяться браузером: Cache-Control %q", resp.Header.Get("Cache-Control"))
+	}
+	post := func(path string) *http.Response {
+		resp, err := e.srv.Client().Post(e.srv.URL+path, "application/x-www-form-urlencoded", strings.NewReader("a=1"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp.Body.Close()
+		return resp
+	}
+	if resp := post("/login"); resp.StatusCode != 405 || resp.Header.Get("Allow") != "GET, HEAD" {
+		t.Errorf("POST на страницу: %d Allow=%q", resp.StatusCode, resp.Header.Get("Allow"))
+	}
+	if resp := post("/nope"); resp.StatusCode != 404 {
+		t.Errorf("POST на несуществующую страницу: %d", resp.StatusCode)
+	}
+}
+
+// Защита от подбора пароля: после 5 неудачных попыток вход блокируется
+// даже с верным паролем, ответ 429 с Retry-After.
+func TestLoginRateLimit(t *testing.T) {
+	e := newEnv(t)
+	g := e.guest()
+	for i := 0; i < 5; i++ {
+		g.call("POST", "/api/auth/login", map[string]string{"email": dmitryEmail, "password": "wrong-pass"}).
+			fails(401, "invalid_credentials")
+	}
+	r := g.call("POST", "/api/auth/login", map[string]string{"email": dmitryEmail, "password": clientPass}).
+		fails(429, "too_many_attempts")
+	if r.Header.Get("Retry-After") == "" {
+		t.Error("нет заголовка Retry-After")
+	}
+	// Другой пользователь с того же адреса входит: лимит по IP (20) не исчерпан.
+	g.call("POST", "/api/auth/login", map[string]string{"email": ivanEmail, "password": clientPass}).ok(200)
 }

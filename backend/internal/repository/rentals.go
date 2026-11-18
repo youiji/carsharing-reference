@@ -79,7 +79,10 @@ func (r *RentalRepository) List(ctx context.Context, f models.RentalFilter) ([]m
 		add("r.status = $%d", *f.Status)
 	}
 	if f.Search != "" {
-		add("(u.full_name ILIKE $%[1]d OR c.plate_number ILIKE $%[1]d)", util.LikeContains(f.Search))
+		// Номер ищется и как введён, и в нормализованном виде: "a101" (латиница) найдёт "А101АА777".
+		args = append(args, util.LikeContains(f.Search), util.LikeContains(util.NormalizePlate(f.Search)))
+		where = append(where, fmt.Sprintf("(u.full_name ILIKE $%d OR c.plate_number ILIKE $%[1]d OR c.plate_number ILIKE $%d)",
+			len(args)-1, len(args)))
 	}
 
 	query := rentalSelect
@@ -223,11 +226,34 @@ func (t *RentalTx) Complete(ctx context.Context, id int64, endedAt time.Time, co
 		WHERE id = $1 AND status = 'active'`, id, endedAt, cost)
 }
 
-// Cancel переводит аренду booked → cancelled.
-func (t *RentalTx) Cancel(ctx context.Context, id int64) error {
+// Cancel переводит аренду booked → cancelled, записывая момент отмены
+// и списанное ожидание (0 при отмене менеджером).
+func (t *RentalTx) Cancel(ctx context.Context, id int64, cancelledAt time.Time, fee util.Money) error {
 	return t.execOne(ctx, "cancel rental", `
-		UPDATE rentals SET status = 'cancelled'
-		WHERE id = $1 AND status = 'booked'`, id)
+		UPDATE rentals SET status = 'cancelled', ended_at = $2, total_cost = $3
+		WHERE id = $1 AND status = 'booked'`, id, cancelledAt, fee)
+}
+
+// LockExpiredBookings блокирует бронирования, сделанные не позже cutoff
+// (их срок истёк). Строки, уже заблокированные другой транзакцией, пропускаются:
+// их обрабатывает та транзакция.
+func (t *RentalTx) LockExpiredBookings(ctx context.Context, cutoff time.Time) ([]models.Rental, error) {
+	rows, err := t.tx.Query(ctx, `
+		SELECT id, user_id, tariff_id, car_id, booked_at, started_at, ended_at,
+		       price_per_min, waiting_per_min, total_cost, status
+		FROM rentals
+		WHERE status = 'booked' AND booked_at <= $1
+		ORDER BY id
+		FOR UPDATE SKIP LOCKED`, cutoff)
+	if err != nil {
+		return nil, fmt.Errorf("lock expired bookings: %w", err)
+	}
+	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (models.Rental, error) {
+		var r models.Rental
+		err := row.Scan(&r.ID, &r.UserID, &r.TariffID, &r.CarID, &r.BookedAt, &r.StartedAt, &r.EndedAt,
+			&r.PricePerMin, &r.WaitingPerMin, &r.TotalCost, &r.Status)
+		return r, err
+	})
 }
 
 // SetCarStatus меняет статус автомобиля from → to. Если автомобиль

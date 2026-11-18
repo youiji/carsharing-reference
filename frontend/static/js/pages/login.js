@@ -30,10 +30,16 @@ export function init() {
   });
 }
 
-// Куда вернуться после входа. Принимается только путь на этом же сайте
-// (защита от перенаправления на чужой сайт через ?next=//evil.example).
+// Куда вернуться после входа. Принимается только адрес на этом же сайте.
+// Адрес разбирается так же, как его разберёт браузер: проверка по началу строки
+// обходится, например, «/<табуляция>/evil.example» — браузер удаляет табуляцию
+// и получает «//evil.example», то есть чужой сайт.
 function nextPage() {
   const next = new URLSearchParams(location.search).get('next');
-  if (next && next.startsWith('/') && !next.startsWith('//') && !next.startsWith('/\\')) return next;
+  if (!next) return '/';
+  try {
+    const url = new URL(next, location.origin);
+    if (url.origin === location.origin) return url.pathname + url.search + url.hash;
+  } catch { /* некорректный адрес */ }
   return '/';
 }

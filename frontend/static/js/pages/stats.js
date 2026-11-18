@@ -60,7 +60,7 @@ function renderTiles(s) {
     tile('Свободно автомобилей', nf.format(s.cars_by_status.available), `всего в автопарке: ${carsTotal}`),
     tile('Сейчас в поездке', nf.format(s.rentals_by_status.active), `бронирований: ${s.rentals_by_status.booked}`),
     tile('Среднее время ожидания', s.avg_wait_minutes === null ? '—' : `${nf.format(s.avg_wait_minutes)} мин`, 'от бронирования до начала поездки'),
-    tile('Выручка', formatMoney(revenue), `завершённых аренд: ${completed}`));
+    tile('Выручка', formatMoney(revenue), `завершённых поездок: ${completed}, плюс платные отмены`));
 }
 
 function tile(label, value, hint) {

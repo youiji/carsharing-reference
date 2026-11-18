@@ -113,6 +113,13 @@ func (s *UserService) modify(ctx context.Context, id int64, change func(u *model
 		if err != nil {
 			return err
 		}
+		before := u
+		change(&u)
+		if sameUserData(before, u) {
+			// Ничего не меняется (например, та же роль): открытая аренда не мешает.
+			saved = u
+			return nil
+		}
 		open, err := tx.HasOpenRental(ctx, id)
 		if err != nil {
 			return err
@@ -121,7 +128,6 @@ func (s *UserService) modify(ctx context.Context, id int64, change func(u *model
 			return util.ErrUserHasActiveRental.WithMessage(
 				"У пользователя есть бронирование или поездка: изменить роль и данные можно после её завершения")
 		}
-		change(&u)
 		saved, err = tx.Save(ctx, u)
 		return err
 	})
@@ -129,4 +135,15 @@ func (s *UserService) modify(ctx context.Context, id int64, change func(u *model
 		return dto.User{}, err
 	}
 	return dto.NewUser(saved), nil
+}
+
+// sameUserData — совпадают ли изменяемые поля пользователя.
+func sameUserData(a, b models.User) bool {
+	same := a.Role == b.Role && a.FullName == b.FullName && strings.EqualFold(a.Email, b.Email)
+	switch {
+	case a.DriverLicense == nil || b.DriverLicense == nil:
+		return same && a.DriverLicense == nil && b.DriverLicense == nil
+	default:
+		return same && *a.DriverLicense == *b.DriverLicense
+	}
 }

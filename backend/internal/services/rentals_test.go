@@ -48,3 +48,24 @@ func TestCeilMinutes(t *testing.T) {
 		}
 	}
 }
+
+func TestCancellationFee(t *testing.T) {
+	booked := time.Date(2026, 11, 18, 10, 0, 0, 0, time.UTC)
+	waiting := util.Money(300) // 3.00 за минуту
+	cases := []struct {
+		name  string
+		after time.Duration
+		want  util.Money
+	}{
+		{"сразу после бронирования", 0, 0},
+		{"неполная минута — одна минута", 10 * time.Second, 300},
+		{"7 мин 30 с — 8 минут", 7*time.Minute + 30*time.Second, 2400},
+		{"ровно срок бронирования", 20 * time.Minute, 6000},
+		{"позже срока — не больше 20 минут", 45 * time.Minute, 6000},
+	}
+	for _, c := range cases {
+		if got := CancellationFee(booked, booked.Add(c.after), waiting); got != c.want {
+			t.Errorf("%s: %v, want %v", c.name, got, c.want)
+		}
+	}
+}

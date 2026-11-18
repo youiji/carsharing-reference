@@ -47,13 +47,14 @@ func (r *StatsRepository) Get(ctx context.Context) (models.Stats, error) {
 			return fmt.Errorf("avg wait: %w", err)
 		}
 
-		// Выручка по завершённым арендам. Группировка по тарифу, сохранённому
-		// в аренде (снимок на момент бронирования). Тарифы без завершённых
-		// аренд тоже выводятся — с нулём.
+		// Выручка: завершённые поездки и платные отмены бронирований (списанное ожидание).
+		// Группировка по тарифу, сохранённому в аренде (снимок на момент бронирования).
+		// Тарифы без выручки тоже выводятся — с нулём.
 		rows, err := tx.Query(ctx, `
 			SELECT t.name, count(r.id), COALESCE(sum(r.total_cost), 0)
 			FROM tariffs t
-			LEFT JOIN rentals r ON r.tariff_id = t.id AND r.status = 'completed'
+			LEFT JOIN rentals r ON r.tariff_id = t.id
+			     AND (r.status = 'completed' OR (r.status = 'cancelled' AND r.total_cost > 0))
 			GROUP BY t.id, t.name
 			ORDER BY 3 DESC, t.name`)
 		if err != nil {

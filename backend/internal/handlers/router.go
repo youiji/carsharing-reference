@@ -8,6 +8,7 @@ import (
 
 	"carsharing/internal/middleware"
 	"carsharing/internal/models"
+	"carsharing/internal/ratelimit"
 	"carsharing/internal/util"
 )
 
@@ -40,7 +41,7 @@ func NewRouter(d Deps) http.Handler {
 	}
 
 	health := &HealthHandler{db: d.DB}
-	auth := &AuthHandler{svc: d.Auth}
+	auth := &AuthHandler{svc: d.Auth, limiter: ratelimit.NewLoginLimiter()}
 	rentals := &RentalHandler{svc: d.Rentals}
 	cars := &CarHandler{svc: d.Cars}
 	tariffs := &TariffHandler{svc: d.Tariffs}
@@ -109,7 +110,7 @@ func NewRouter(d Deps) http.Handler {
 			util.WriteError(w, r, util.ErrMethodNotAllowed)
 			return
 		}
-		util.WriteError(w, r, util.ErrNotFound.WithMessage("Метод API не найден"))
+		util.WriteError(w, r, util.ErrNotFound.WithMessage("Путь API не найден"))
 	})
 
 	// Logger снаружи, чтобы в лог попадали и ответы 500 после паники.

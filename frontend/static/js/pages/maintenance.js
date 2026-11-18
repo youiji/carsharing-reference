@@ -3,10 +3,11 @@
 import { api, query } from '../api.js';
 import {
   confirmAction, debounce, el, emptyRow, formatDateTime, formatMoney, formDialog, num,
-  render, sortableHeaders, toast,
+  readQuery, render, sortableHeaders, toast, writeQuery,
 } from '../ui.js';
 
-const state = { q: '', car_id: '', sort: 'logged_at', order: 'desc' };
+const DEFAULTS = { q: '', car_id: '', sort: 'logged_at', order: 'desc' };
+const state = { ...DEFAULTS };
 let user;
 let cars = [];
 let table;
@@ -15,15 +16,12 @@ export async function init(ctx) {
   user = ctx.user;
   table = document.getElementById('maintenance-table');
   const form = document.getElementById('filters');
-  state.car_id = new URLSearchParams(location.search).get('car_id') || '';
+  readQuery(state);
+  form.q.value = state.q;
 
   form.addEventListener('submit', (e) => e.preventDefault());
   form.q.addEventListener('input', debounce(() => { state.q = form.q.value.trim(); load(); }));
-  form.car_id.addEventListener('change', () => {
-    state.car_id = form.car_id.value;
-    history.replaceState(null, '', `${location.pathname}${query({ car_id: state.car_id })}`);
-    load();
-  });
+  form.car_id.addEventListener('change', () => { state.car_id = form.car_id.value; load(); });
   sortableHeaders(table, state, load);
   document.querySelector('[data-action="add"]').addEventListener('click', () => recordDialog());
 
@@ -36,6 +34,7 @@ export async function init(ctx) {
 }
 
 async function load() {
+  writeQuery(state, DEFAULTS);
   const tbody = table.querySelector('tbody');
   try {
     const { items, total } = await api.get(`/maintenance${query(state)}`);

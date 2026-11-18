@@ -16,6 +16,9 @@ import (
 // Каждое действие выполняется в одной транзакции: статус аренды и статус
 // автомобиля меняются вместе или не меняются вовсе. Время всех событий
 // (booked_at, started_at, ended_at) ставит сервер.
+//
+// Бронирование действует models.BookingTTL (20 минут). Отмена клиентом или истечение
+// срока списывает ожидание; отмена менеджером или администратором бесплатна.
 type RentalService struct {
 	repo *repository.RentalRepository
 	now  func() time.Time
@@ -40,6 +43,12 @@ func (s *RentalService) Book(ctx context.Context, user models.User, req dto.Crea
 	// переведённого в клиенты (docs/role_matrix.md, раздел 4, п. 5).
 	if user.DriverLicense == nil || *user.DriverLicense == "" {
 		return dto.Rental{}, util.ErrLicenseRequired
+	}
+
+	// Сначала снимаются просроченные бронирования (отдельной транзакцией), чтобы
+	// машина или сам клиент не числились занятыми до прохода фоновой задачи.
+	if _, err := s.ExpireBookings(ctx); err != nil {
+		return dto.Rental{}, err
 	}
 
 	var rentalID int64
@@ -101,7 +110,10 @@ func (s *RentalService) Book(ctx context.Context, user models.User, req dto.Crea
 }
 
 // Start — POST /api/rentals/{id}/start: booked → active, автомобиль → in_use.
+// Если срок бронирования истёк, оно отменяется со списанием ожидания и возвращается
+// 409 booking_expired (отмена при этом сохраняется).
 func (s *RentalService) Start(ctx context.Context, user models.User, rentalID int64) (dto.Rental, error) {
+	expired := false
 	err := s.repo.InTx(ctx, func(tx *repository.RentalTx) error {
 		rental, err := s.lockOwned(ctx, tx, user, rentalID, false)
 		if err != nil {
@@ -109,6 +121,10 @@ func (s *RentalService) Start(ctx context.Context, user models.User, rentalID in
 		}
 		if rental.Status != models.RentalBooked {
 			return transitionErr(rental.Status, "начать поездку можно только по бронированию")
+		}
+		if s.isExpired(rental) {
+			expired = true
+			return s.expire(ctx, tx, rental)
 		}
 		startedAt := s.timestamp()
 		if startedAt.Before(rental.BookedAt) {
@@ -121,6 +137,9 @@ func (s *RentalService) Start(ctx context.Context, user models.User, rentalID in
 	})
 	if err != nil {
 		return dto.Rental{}, err
+	}
+	if expired {
+		return dto.Rental{}, util.ErrBookingExpired
 	}
 	return s.get(ctx, rentalID)
 }
@@ -160,6 +179,8 @@ func (s *RentalService) Finish(ctx context.Context, user models.User, rentalID i
 
 // Cancel — POST /api/rentals/{id}/cancel: booked → cancelled, автомобиль → available.
 // Клиент отменяет только своё бронирование, менеджер и админ — любое.
+// Клиенту списывается ожидание с момента бронирования; отмена сотрудником бесплатна.
+// Если срок бронирования уже истёк, оно отменяется как просроченное.
 func (s *RentalService) Cancel(ctx context.Context, user models.User, rentalID int64) (dto.Rental, error) {
 	err := s.repo.InTx(ctx, func(tx *repository.RentalTx) error {
 		rental, err := s.lockOwned(ctx, tx, user, rentalID, isStaff(user))
@@ -169,7 +190,18 @@ func (s *RentalService) Cancel(ctx context.Context, user models.User, rentalID i
 		if rental.Status != models.RentalBooked {
 			return transitionErr(rental.Status, "отменить можно только бронирование")
 		}
-		if err := tx.Cancel(ctx, rental.ID); err != nil {
+		if s.isExpired(rental) {
+			return s.expire(ctx, tx, rental)
+		}
+		cancelledAt := s.timestamp()
+		if cancelledAt.Before(rental.BookedAt) {
+			cancelledAt = rental.BookedAt
+		}
+		fee := util.Money(0)
+		if !isStaff(user) {
+			fee = CancellationFee(rental.BookedAt, cancelledAt, rental.WaitingPerMin)
+		}
+		if err := tx.Cancel(ctx, rental.ID, cancelledAt, fee); err != nil {
 			return err
 		}
 		return tx.SetCarStatus(ctx, rental.CarID, models.CarBooked, models.CarAvailable)
@@ -178,6 +210,42 @@ func (s *RentalService) Cancel(ctx context.Context, user models.User, rentalID i
 		return dto.Rental{}, err
 	}
 	return s.get(ctx, rentalID)
+}
+
+// ExpireBookings отменяет все бронирования, срок которых истёк, со списанием
+// ожидания за весь срок. Вызывается фоновой задачей сервера и перед бронированием.
+// Возвращает число отменённых бронирований.
+func (s *RentalService) ExpireBookings(ctx context.Context) (int, error) {
+	n := 0
+	err := s.repo.InTx(ctx, func(tx *repository.RentalTx) error {
+		expired, err := tx.LockExpiredBookings(ctx, s.timestamp().Add(-models.BookingTTL))
+		if err != nil {
+			return err
+		}
+		for _, r := range expired {
+			if err := s.expire(ctx, tx, r); err != nil {
+				return err
+			}
+		}
+		n = len(expired)
+		return nil
+	})
+	return n, err
+}
+
+// isExpired — истёк ли срок бронирования к текущему моменту.
+func (s *RentalService) isExpired(r models.Rental) bool {
+	return !s.timestamp().Before(r.BookedAt.Add(models.BookingTTL))
+}
+
+// expire отменяет просроченное бронирование: момент отмены — конец срока,
+// списывается ожидание за весь срок, автомобиль снова свободен.
+func (s *RentalService) expire(ctx context.Context, tx *repository.RentalTx, r models.Rental) error {
+	end := r.BookedAt.Add(models.BookingTTL)
+	if err := tx.Cancel(ctx, r.ID, end, CancellationFee(r.BookedAt, end, r.WaitingPerMin)); err != nil {
+		return err
+	}
+	return tx.SetCarStatus(ctx, r.CarID, models.CarBooked, models.CarAvailable)
 }
 
 // Get — GET /api/rentals/{id}: клиент видит только свои аренды, менеджер и админ — любые.
@@ -279,6 +347,13 @@ func CalcRentalCost(bookedAt, startedAt, endedAt time.Time, pricePerMin, waiting
 	rideMin := max(1, ceilMinutes(endedAt.Sub(startedAt)))
 	waitMin := ceilMinutes(startedAt.Sub(bookedAt))
 	return pricePerMin*util.Money(rideMin) + waitingPerMin*util.Money(waitMin)
+}
+
+// CancellationFee — списание при отмене бронирования (docs/api.md, раздел 2.3):
+// цена_ожидания × ⌈отмена − бронирование⌉ в минутах, но не больше срока бронирования.
+func CancellationFee(bookedAt, cancelledAt time.Time, waitingPerMin util.Money) util.Money {
+	minutes := min(ceilMinutes(cancelledAt.Sub(bookedAt)), int64(models.BookingTTL/time.Minute))
+	return waitingPerMin * util.Money(minutes)
 }
 
 // ceilMinutes округляет длительность вверх до целых минут (отрицательная → 0).

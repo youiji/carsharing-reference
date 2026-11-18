@@ -92,3 +92,24 @@ func TestNewMissingDir(t *testing.T) {
 		t.Error("ожидалась ошибка для каталога без static")
 	}
 }
+
+func TestStaticCacheAndMethods(t *testing.T) {
+	h := newTestHandler(t)
+	if rec := get(h, "/static/css/main.css"); rec.Header().Get("Cache-Control") != "no-cache" {
+		t.Errorf("статика: Cache-Control %q, ожидался no-cache", rec.Header().Get("Cache-Control"))
+	}
+	post := func(path string) *httptest.ResponseRecorder {
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, path, nil))
+		return rec
+	}
+	if rec := post("/login"); rec.Code != http.StatusMethodNotAllowed || rec.Header().Get("Allow") != "GET, HEAD" {
+		t.Errorf("POST /login: %d Allow=%q", rec.Code, rec.Header().Get("Allow"))
+	}
+	if rec := post("/"); rec.Code != http.StatusMethodNotAllowed {
+		t.Errorf("POST /: %d", rec.Code)
+	}
+	if rec := post("/no-such-page"); rec.Code != http.StatusNotFound {
+		t.Errorf("POST на несуществующую страницу: %d", rec.Code)
+	}
+}

@@ -1,4 +1,5 @@
-// Команда server запускает REST API сервиса каршеринга.
+// Команда server запускает сервис каршеринга: REST API (/api/...), страницы интерфейса
+// и фоновую отмену просроченных бронирований.
 package main
 
 import (
@@ -76,6 +77,9 @@ func run() error {
 		close(errCh)
 	}()
 	slog.Info("server started", "addr", cfg.HTTPAddr, "url", "http://localhost:"+port(cfg.HTTPAddr))
+
+	// Просроченные бронирования снимаются каждые 15 секунд.
+	go app.RunBookingExpiry(ctx, pool, 15*time.Second)
 
 	select {
 	case err := <-errCh:

@@ -4,7 +4,10 @@
 package app
 
 import (
+	"context"
+	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -44,4 +47,25 @@ func newAPI(pool *pgxpool.Pool, tokens *util.TokenManager) http.Handler {
 		UsersAdmin:  services.NewUserService(userRepo),
 		Stats:       services.NewStatsService(repository.NewStatsRepository(pool)),
 	})
+}
+
+// RunBookingExpiry периодически отменяет просроченные бронирования (models.BookingTTL)
+// со списанием ожидания, пока не отменён ctx. Запросы старта и отмены проверяют срок
+// сами, поэтому задержка задачи на корректность не влияет: она лишь освобождает машину.
+func RunBookingExpiry(ctx context.Context, pool *pgxpool.Pool, every time.Duration) {
+	svc := services.NewRentalService(repository.NewRentalRepository(pool))
+	ticker := time.NewTicker(every)
+	defer ticker.Stop()
+	for {
+		if n, err := svc.ExpireBookings(ctx); err != nil && ctx.Err() == nil {
+			slog.Error("expire bookings", "err", err)
+		} else if n > 0 {
+			slog.Info("bookings expired", "count", n)
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
+	}
 }

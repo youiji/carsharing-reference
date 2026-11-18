@@ -3,7 +3,7 @@
 import { api, query } from '../api.js';
 import {
   badge, CAR_STATUS, confirmAction, debounce, el, emptyRow, formDialog, formatMoney,
-  num, openDialog, render, sortableHeaders, toast, busy,
+  num, openDialog, readQuery, render, sortableHeaders, toast, busy, writeQuery,
 } from '../ui.js';
 import { carIcon, createMap } from '../map.js';
 
@@ -15,13 +15,17 @@ const TRANSITIONS = {
   decommissioned: ['available'],
 };
 
-const state = { q: '', tariff_id: '', status: '', sort: 'id', order: 'asc' };
+const DEFAULTS = { q: '', tariff_id: '', status: '', sort: 'id', order: 'asc' };
+const state = { ...DEFAULTS };
 let tariffs = [];
 let table;
 
 export async function init() {
   table = document.getElementById('fleet-table');
   const form = document.getElementById('filters');
+  readQuery(state);
+  form.q.value = state.q;
+  form.status.value = state.status;
   form.addEventListener('submit', (e) => e.preventDefault());
   form.q.addEventListener('input', debounce(() => { state.q = form.q.value.trim(); load(); }));
   form.tariff_id.addEventListener('change', () => { state.tariff_id = form.tariff_id.value; load(); });
@@ -32,11 +36,13 @@ export async function init() {
   try {
     tariffs = (await api.get('/tariffs')).items;
     for (const t of tariffs) form.tariff_id.append(el('option', { value: t.id }, t.name));
+    form.tariff_id.value = state.tariff_id;
   } catch (err) { toast(err.message, 'error'); }
   await load();
 }
 
 async function load() {
+  writeQuery(state, DEFAULTS);
   const tbody = table.querySelector('tbody');
   try {
     const { items, total } = await api.get(`/cars${query(state)}`);
@@ -119,6 +125,9 @@ function carDialog(car) {
   latitude.addEventListener('change', sync);
   longitude.addEventListener('change', sync);
   setTimeout(() => map.invalidateSize(), 50);
+  // Карта уничтожается вместе с окном: иначе каждое открытие оставляет в памяти
+  // WebGL-контекст векторной подложки, и браузер начинает отключать старые.
+  dlg.dialog.addEventListener('close', () => map.remove());
 }
 
 function statusDialog(car) {

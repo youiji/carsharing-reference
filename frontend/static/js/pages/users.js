@@ -4,10 +4,11 @@
 import { api, query } from '../api.js';
 import {
   busy, confirmAction, debounce, el, emptyRow, formatDate, formDialog, openDialog,
-  render, ROLE_LABELS, sortableHeaders, toast,
+  readQuery, render, ROLE_LABELS, sortableHeaders, toast, writeQuery,
 } from '../ui.js';
 
-const state = { q: '', role: '', sort: 'id', order: 'asc' };
+const DEFAULTS = { q: '', role: '', sort: 'id', order: 'asc' };
+const state = { ...DEFAULTS };
 let me;
 let table;
 
@@ -15,6 +16,9 @@ export async function init({ user }) {
   me = user;
   table = document.getElementById('users-table');
   const form = document.getElementById('filters');
+  readQuery(state);
+  form.q.value = state.q;
+  form.role.value = state.role;
   form.addEventListener('submit', (e) => e.preventDefault());
   form.q.addEventListener('input', debounce(() => { state.q = form.q.value.trim(); load(); }));
   form.role.addEventListener('change', () => { state.role = form.role.value; load(); });
@@ -23,6 +27,7 @@ export async function init({ user }) {
 }
 
 async function load() {
+  writeQuery(state, DEFAULTS);
   const tbody = table.querySelector('tbody');
   try {
     const { items, total } = await api.get(`/users${query(state)}`);
@@ -48,7 +53,8 @@ function row(u) {
         title: self ? 'Свою роль изменить нельзя' : null, on: { click: () => roleDialog(u) },
       }, 'Роль'),
       el('button', { className: 'btn btn-secondary btn-sm', type: 'button', on: { click: () => dataDialog(u) } }, 'Данные'),
-      u.role === 'client' && el('a', { className: 'btn btn-ghost btn-sm', href: `/rentals?user_id=${u.id}` }, 'Аренды'),
+      // Аренды могут быть и у сотрудника, который раньше был клиентом.
+      el('a', { className: 'btn btn-ghost btn-sm', href: `/rentals?user_id=${u.id}` }, 'Аренды'),
       el('button', {
         className: 'btn btn-ghost btn-sm', type: 'button', disabled: self,
         title: self ? 'Нельзя удалить свою учётную запись' : null, on: { click: () => remove(u) },
