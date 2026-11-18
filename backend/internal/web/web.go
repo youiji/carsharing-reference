@@ -154,7 +154,7 @@ func (h *Handler) render(w http.ResponseWriter, data pageData) {
 // загружаются только с нашего сервера, встроенные скрипты запрещены. Даже если
 // в данные попадёт <script>, браузер его не выполнит. Тайлы карты — с OpenStreetMap.
 const contentSecurityPolicy = "default-src 'self'; script-src 'self'; style-src 'self'; " +
-	"img-src 'self' data: https://*.tile.openstreetmap.org; connect-src 'self'; " +
+	"img-src 'self' data: https://tile.openstreetmap.org https://*.tile.openstreetmap.org; connect-src 'self'; " +
 	"object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
 
 // noDirListing запрещает просмотр содержимого каталогов статики.
@@ -174,7 +174,9 @@ func SecurityHeaders(next http.Handler) http.Handler {
 		h := w.Header()
 		h.Set("X-Content-Type-Options", "nosniff")
 		h.Set("X-Frame-Options", "DENY")
-		h.Set("Referrer-Policy", "same-origin")
+		// Другим сайтам передаётся только адрес сайта без пути: сервер тайлов
+		// OpenStreetMap требует заголовок Referer и без него отказывает в картах.
+		h.Set("Referrer-Policy", "strict-origin-when-cross-origin")
 		next.ServeHTTP(w, r)
 	})
 }

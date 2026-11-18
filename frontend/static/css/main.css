@@ -271,3 +271,47 @@ dialog.modal::backdrop { background: rgba(16, 24, 40, .45); }
   .props { grid-template-columns: 1fr; gap: 2px; }
   .props dd { margin-bottom: 8px; }
 }
+
+/* ---------- Карта ---------- */
+
+.map { height: 420px; border-radius: var(--radius); border: 1px solid var(--c-border); box-shadow: var(--shadow); margin-bottom: 16px; background: #e8eef0; z-index: 0; }
+.map-small { height: 300px; margin-bottom: 4px; box-shadow: none; }
+.leaflet-container { font: inherit; }
+.leaflet-container a { color: var(--c-primary); }
+.car-marker { background: none; border: 0; }
+.car-marker-pin {
+  display: block; width: 26px; height: 26px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg);
+  background: var(--c-success); border: 3px solid #fff; box-shadow: 0 2px 6px rgba(0, 0, 0, .35);
+}
+.car-marker-booked .car-marker-pin { background: var(--c-info); }
+.car-marker-in_use .car-marker-pin { background: #d97706; }
+.car-marker-maintenance .car-marker-pin { background: #7e22ce; }
+.car-marker-decommissioned .car-marker-pin { background: #8a959a; }
+.car-popup { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+.car-popup .btn { margin-top: 6px; }
+
+/* ---------- Таблицы: дополнения ---------- */
+
+.nowrap { white-space: nowrap; }
+td.actions { text-align: right; white-space: nowrap; }
+tr.row-clickable { cursor: pointer; }
+tr.is-selected td { background: var(--c-primary-soft); }
+.fuel { display: inline-flex; align-items: center; gap: 8px; font-variant-numeric: tabular-nums; }
+.fuel-bar { width: 56px; height: 6px; border-radius: 3px; background: var(--c-neutral-soft); overflow: hidden; }
+.fuel-fill { display: block; height: 100%; background: var(--c-success); }
+.fuel-mid .fuel-fill { background: #d97706; }
+.fuel-low .fuel-fill { background: var(--c-danger); }
+
+.section-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; margin: 28px 0 12px; }
+.section-head h2 { margin: 0; }
+.field-inline { flex-direction: row; align-items: center; gap: 8px; }
+.field-inline select { width: auto; }
+
+/* ---------- Текущая аренда ---------- */
+
+.rental-current .tiles { margin: 16px 0; }
+.rental-current .tile { box-shadow: none; background: #fafbfb; }
+.tile-accent { border-color: var(--c-primary); background: var(--c-primary-soft) !important; }
+.rental-actions { margin-top: 4px; }
+.result-cost { font-size: 2.2rem; font-weight: 800; color: var(--c-primary); margin-bottom: 12px; }
+dialog.modal-wide { width: min(720px, calc(100vw - 32px)); }

@@ -149,3 +149,93 @@ export const RENTAL_STATUS = {
 export function badge(status, labels) {
   return el('span', { className: `badge badge-${status}`, text: labels[status] || status });
 }
+
+// ---------- Модальные окна ----------
+
+/**
+ * Открывает модальное окно (<dialog>). content — узел или массив узлов.
+ * Возвращает { dialog, body, close }. Окно удаляется из DOM после закрытия.
+ */
+export function openDialog({ title, content, className = '' }) {
+  const body = el('div', { className: 'modal-body' }, content);
+  const dialog = el('dialog', { className: `modal ${className}`, 'aria-labelledby': 'modal-title' },
+    el('div', { className: 'modal-head' },
+      el('h2', { id: 'modal-title', text: title }),
+      el('button', {
+        className: 'toast-close', type: 'button', 'aria-label': 'Закрыть',
+        on: { click: () => dialog.close() },
+      }, '×')),
+    body);
+  dialog.addEventListener('close', () => dialog.remove());
+  document.body.append(dialog);
+  dialog.showModal();
+  return { dialog, body, close: () => dialog.close() };
+}
+
+/** Подтверждение действия. Возвращает Promise<boolean>. */
+export function confirmDialog({ title, text, confirmText = 'Подтвердить', danger = false }) {
+  return new Promise((resolve) => {
+    let result = false;
+    const ok = el('button', {
+      className: `btn ${danger ? 'btn-danger' : 'btn-primary'}`, type: 'button',
+      on: { click: () => { result = true; d.close(); } },
+    }, confirmText);
+    const d = openDialog({
+      title,
+      content: [
+        ...[].concat(text).map((t) => (t instanceof Node ? t : el('p', { text: t }))),
+        el('div', { className: 'form-actions' },
+          el('button', { className: 'btn btn-secondary', type: 'button', on: { click: () => d.close() } }, 'Отмена'),
+          ok),
+      ],
+    });
+    d.dialog.addEventListener('close', () => resolve(result));
+    ok.focus();
+  });
+}
+
+// ---------- Таблицы ----------
+
+/**
+ * Сортировка по клику на заголовок: th[data-sort="поле"].
+ * state — { sort, order }; onChange вызывается после смены.
+ */
+export function sortableHeaders(table, state, onChange) {
+  const ths = [...table.querySelectorAll('th[data-sort]')];
+  const paint = () => ths.forEach((th) => {
+    th.classList.add('sortable');
+    th.tabIndex = 0;
+    if (th.dataset.sort === state.sort) th.setAttribute('aria-sort', state.order === 'desc' ? 'descending' : 'ascending');
+    else th.removeAttribute('aria-sort');
+  });
+  const toggle = (th) => {
+    if (state.sort === th.dataset.sort) state.order = state.order === 'asc' ? 'desc' : 'asc';
+    else { state.sort = th.dataset.sort; state.order = 'asc'; }
+    paint();
+    onChange();
+  };
+  ths.forEach((th) => {
+    th.addEventListener('click', () => toggle(th));
+    th.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(th); } });
+  });
+  paint();
+  return paint;
+}
+
+// Строка «ничего не найдено» на всю ширину таблицы.
+export function emptyRow(table, text) {
+  const cols = table.querySelectorAll('thead th').length;
+  return el('tr', {}, el('td', { className: 'table-empty', colspan: cols, text }));
+}
+
+export function debounce(fn, ms = 300) {
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+
+// «95 мин» → «1 ч 35 мин»
+export function formatMinutes(min) {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return h ? `${h} ч ${m} мин` : `${m} мин`;
+}
