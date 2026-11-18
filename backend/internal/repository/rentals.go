@@ -237,16 +237,15 @@ func (t *RentalTx) SetCarStatus(ctx context.Context, carID int64, from, to strin
 		UPDATE cars SET status = $3 WHERE id = $1 AND status = $2`, carID, from, to)
 }
 
-// ReleaseCar после поездки: in_use → available и, если переданы,
-// новые координаты и уровень топлива.
+// ReleaseCar после поездки: in_use → available и, если переданы, новые координаты.
+// Уровень топлива здесь не меняется: его меняет только менеджер.
 func (t *RentalTx) ReleaseCar(ctx context.Context, carID int64, loc models.CarLocation) error {
 	return t.execOne(ctx, "release car", `
-		UPDATE cars SET status     = 'available',
-		                latitude   = COALESCE($2, latitude),
-		                longitude  = COALESCE($3, longitude),
-		                fuel_level = COALESCE($4, fuel_level)
+		UPDATE cars SET status    = 'available',
+		                latitude  = COALESCE($2, latitude),
+		                longitude = COALESCE($3, longitude)
 		WHERE id = $1 AND status = 'in_use'`,
-		carID, loc.Latitude, loc.Longitude, loc.FuelLevel)
+		carID, loc.Latitude, loc.Longitude)
 }
 
 // execOne выполняет UPDATE, который должен изменить ровно одну строку.

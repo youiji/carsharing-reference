@@ -47,9 +47,8 @@ type RentalFilter struct {
 	Desc   bool
 }
 
-// CarLocation — новое состояние автомобиля после поездки (все поля необязательны).
+// CarLocation — место парковки после поездки (поля необязательны, передаются вместе).
 type CarLocation struct {
 	Latitude  *float64
 	Longitude *float64
-	FuelLevel *int
 }

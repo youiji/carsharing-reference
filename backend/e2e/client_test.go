@@ -99,16 +99,16 @@ func TestClient(t *testing.T) {
 		}
 		dmitry.call("POST", path+"/cancel", nil).fails(409, "invalid_status_transition")
 		dmitry.call("POST", path+"/finish", map[string]any{"latitude": 55.76}).fails(400, "validation_error")
-		dmitry.call("POST", path+"/finish", map[string]any{"fuel_level": 150}).fails(400, "validation_error")
 
-		dmitry.call("POST", path+"/finish", map[string]any{"latitude": 55.7601, "longitude": 37.6195, "fuel_level": 61}).
+		// Клиент пытается подставить полный бак: поле игнорируется, топливо остаётся прежним (78%).
+		dmitry.call("POST", path+"/finish", map[string]any{"latitude": 55.7601, "longitude": 37.6195, "fuel_level": 100}).
 			ok(200).into(&r)
 		// Поездка короче минуты: 1 минута поездки + 1 минута ожидания = 8.90 + 2.00
 		if r.Status != "completed" || r.EndedAt == nil || r.TotalCost == nil || money(t, *r.TotalCost) != 1090 {
 			t.Fatalf("завершение: %+v (total_cost %v)", r, r.TotalCost)
 		}
 		dmitry.call("GET", fmt.Sprintf("/api/cars/%d", freeEconomy), nil).ok(200).into(&c)
-		if c.Status != "available" || c.FuelLevel != 61 || c.Latitude.String() != "55.7601" {
+		if c.Status != "available" || c.FuelLevel != 78 || c.Latitude.String() != "55.7601" {
 			t.Errorf("машина после поездки: %+v", c)
 		}
 

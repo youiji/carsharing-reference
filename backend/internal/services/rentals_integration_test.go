@@ -187,14 +187,16 @@ func TestIntegrationRentalLifecycle(t *testing.T) {
 	e.expectCode("повторный старт", err, "invalid_status_transition")
 
 	// Невалидные данные парковки не меняют ничего.
-	lat, lon, fuel := 55.76, 37.62, 61
+	lat, lon := 55.76, 37.62
+	var fuelBefore int
+	e.pool.QueryRow(e.ctx, `SELECT fuel_level FROM cars WHERE id = $1`, carID).Scan(&fuelBefore)
 	_, err = e.svc.Finish(e.ctx, ivan, rental.ID, dto.FinishRentalRequest{Latitude: &lat})
 	e.expectCode("только одна координата", err, "validation_error")
 
 	// Финиш через 34 мин 40 с после старта → 35 минут поездки.
 	// 19.90 × 35 + 5.00 × 6 = 696.50 + 30.00 = 726.50
 	e.clock = e.clock.Add(34*time.Minute + 40*time.Second)
-	rental, err = e.svc.Finish(e.ctx, ivan, rental.ID, dto.FinishRentalRequest{Latitude: &lat, Longitude: &lon, FuelLevel: &fuel})
+	rental, err = e.svc.Finish(e.ctx, ivan, rental.ID, dto.FinishRentalRequest{Latitude: &lat, Longitude: &lon})
 	if err != nil {
 		t.Fatalf("Finish: %v", err)
 	}
@@ -206,7 +208,8 @@ func TestIntegrationRentalLifecycle(t *testing.T) {
 	var status string
 	e.pool.QueryRow(e.ctx, `SELECT status, latitude, longitude, fuel_level FROM cars WHERE id = $1`, carID).
 		Scan(&status, &gotLat, &gotLon, &gotFuel)
-	if status != models.CarAvailable || gotLat != lat || gotLon != lon || gotFuel != fuel {
+	// Уровень топлива после поездки не меняется: клиент его не задаёт.
+	if status != models.CarAvailable || gotLat != lat || gotLon != lon || gotFuel != fuelBefore {
 		t.Fatalf("машина после поездки: %s %v %v %d", status, gotLat, gotLon, gotFuel)
 	}
 

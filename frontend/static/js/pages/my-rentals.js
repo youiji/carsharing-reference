@@ -132,13 +132,12 @@ async function cancel(r, button) {
   }
 }
 
-// Завершение: место парковки выбирается на карте, уровень топлива — в поле.
+// Завершение: место парковки выбирается на карте. Уровень топлива клиент не указывает:
+// это состояние автомобиля, его меняет только менеджер.
 async function finishDialog(r) {
   let car = null;
   try { car = await api.get(`/cars/${r.car.id}`); } catch { /* без текущих данных машины */ }
 
-  const fuel = el('input', { id: 'fuel_level', name: 'fuel_level', type: 'number', min: 0, max: 100, step: 1,
-    inputmode: 'numeric', value: car ? car.fuel_level : '' });
   const coords = el('p', { className: 'muted small' });
   const error = el('p', { className: 'form-error', role: 'alert' });
   const submit = el('button', { className: 'btn btn-primary', type: 'submit' }, 'Завершить поездку');
@@ -148,9 +147,6 @@ async function finishDialog(r) {
       el('label', { text: 'Место парковки' }),
       el('p', { className: 'field-hint', text: 'Нажмите на карту, чтобы указать, где оставлен автомобиль.' }),
       mapBox, coords),
-    el('div', { className: 'field' },
-      el('label', { for: 'fuel_level', text: 'Уровень топлива, %' }), fuel,
-      el('p', { className: 'field-error', dataset: { errorFor: 'fuel_level' } })),
     error,
     el('div', { className: 'form-actions' },
       el('button', { className: 'btn btn-secondary', type: 'button', on: { click: () => d.close() } }, 'Отмена'),
@@ -177,17 +173,7 @@ async function finishDialog(r) {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     error.textContent = '';
-    form.querySelector('[data-error-for="fuel_level"]').textContent = '';
     const body = {};
-    if (fuel.value !== '') {
-      const n = Number(fuel.value);
-      if (!Number.isInteger(n) || n < 0 || n > 100) {
-        form.querySelector('[data-error-for="fuel_level"]').textContent = 'Целое число от 0 до 100';
-        fuel.focus();
-        return;
-      }
-      body.fuel_level = n;
-    }
     if (point) [body.latitude, body.longitude] = point;
 
     busy(submit, true);

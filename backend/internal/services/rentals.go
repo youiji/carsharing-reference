@@ -126,7 +126,7 @@ func (s *RentalService) Start(ctx context.Context, user models.User, rentalID in
 }
 
 // Finish — POST /api/rentals/{id}/finish: active → completed, расчёт стоимости,
-// автомобиль → available с новыми координатами и уровнем топлива.
+// автомобиль → available на месте парковки. Уровень топлива клиент не задаёт.
 func (s *RentalService) Finish(ctx context.Context, user models.User, rentalID int64, req dto.FinishRentalRequest) (dto.Rental, error) {
 	if err := validateFinish(req); err != nil {
 		return dto.Rental{}, err
@@ -149,7 +149,7 @@ func (s *RentalService) Finish(ctx context.Context, user models.User, rentalID i
 			return err
 		}
 		return tx.ReleaseCar(ctx, rental.CarID, models.CarLocation{
-			Latitude: req.Latitude, Longitude: req.Longitude, FuelLevel: req.FuelLevel,
+			Latitude: req.Latitude, Longitude: req.Longitude,
 		})
 	})
 	if err != nil {
@@ -264,9 +264,6 @@ func validateFinish(req dto.FinishRentalRequest) error {
 	}
 	if req.Longitude != nil {
 		v.Check(*req.Longitude >= -180 && *req.Longitude <= 180, "longitude", "должно быть от -180 до 180")
-	}
-	if req.FuelLevel != nil {
-		v.Check(*req.FuelLevel >= 0 && *req.FuelLevel <= 100, "fuel_level", "должно быть от 0 до 100")
 	}
 	return v.Err()
 }

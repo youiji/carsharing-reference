@@ -26,11 +26,12 @@ type CreateRentalRequest struct {
 	CarID int64 `json:"car_id"`
 }
 
-// FinishRentalRequest — тело POST /api/rentals/{id}/finish (все поля необязательны).
+// FinishRentalRequest — тело POST /api/rentals/{id}/finish (поля необязательны).
+// Уровень топлива клиент не передаёт: это состояние автомобиля, его меняет только
+// менеджер (PUT /api/cars/{id}); поле fuel_level в запросе игнорируется.
 type FinishRentalRequest struct {
 	Latitude  *float64 `json:"latitude"`
 	Longitude *float64 `json:"longitude"`
-	FuelLevel *int     `json:"fuel_level"`
 }
 
 type RentalUser struct {
