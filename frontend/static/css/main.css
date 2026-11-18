@@ -315,3 +315,18 @@ tr.is-selected td { background: var(--c-primary-soft); }
 .rental-actions { margin-top: 4px; }
 .result-cost { font-size: 2.2rem; font-weight: 800; color: var(--c-primary); margin-bottom: 12px; }
 dialog.modal-wide { width: min(720px, calc(100vw - 32px)); }
+
+/* ---------- Панели управления ---------- */
+
+.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.form-grid .field-wide { grid-column: 1 / -1; }
+@media (max-width: 600px) { .form-grid { grid-template-columns: minmax(0, 1fr); } }
+textarea { resize: vertical; min-height: 80px; }
+td.actions .btn + .btn { margin-left: 4px; }
+.cell-sub { display: block; color: var(--c-muted); font-size: .85rem; }
+.desc-cell { max-width: 380px; }
+.notice { color: var(--c-muted); font-size: .9rem; margin: -4px 0 14px; }
+.status-options { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.status-option { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--c-border); border-radius: var(--radius-sm); cursor: pointer; }
+.status-option:has(input:checked) { border-color: var(--c-primary); background: var(--c-primary-soft); }
+.status-option input { width: auto; }

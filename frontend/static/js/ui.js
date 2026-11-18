@@ -90,7 +90,8 @@ export function formErrors(form) {
       const p = form.querySelector(`[data-error-for="${name}"]`);
       const input = form.elements[name];
       if (input) input.setAttribute('aria-invalid', 'true');
-      if (p) { p.textContent = message; return true; }
+      const text = String(message);
+      if (p) { p.textContent = text.charAt(0).toUpperCase() + text.slice(1); return true; }
       return false;
     },
     show(err) {
@@ -238,4 +239,87 @@ export function formatMinutes(min) {
   const h = Math.floor(min / 60);
   const m = min % 60;
   return h ? `${h} ч ${m} мин` : `${m} мин`;
+}
+
+// ---------- Формы в модальном окне ----------
+
+let fieldSeq = 0;
+
+/**
+ * Форма в модальном окне по описанию полей:
+ *   { name, label, type: 'text'|'number'|'select'|'textarea', options: [{value,label}],
+ *     hint, wide, attrs: {min, max, step, maxlength, inputmode, placeholder...} }
+ * onSubmit(values) — async; если бросает ApiError, ошибки показываются под полями,
+ * иначе окно закрывается. extra — дополнительный узел под полями (например, карта).
+ */
+export function formDialog({ title, fields, values = {}, submitText = 'Сохранить', onSubmit, extra, className = '' }) {
+  const inputs = {};
+  const nodes = fields.map((f) => {
+    const id = `f-${++fieldSeq}`;
+    const attrs = { id, name: f.name, ...(f.attrs || {}) };
+    let input;
+    if (f.type === 'select') {
+      input = el('select', attrs, f.options.map((o) =>
+        el('option', { value: o.value, selected: String(values[f.name] ?? '') === String(o.value) }, o.label)));
+    } else if (f.type === 'textarea') {
+      input = el('textarea', { rows: 3, ...attrs });
+      input.value = values[f.name] ?? '';
+    } else {
+      input = el('input', { type: f.type || 'text', ...attrs });
+      input.value = values[f.name] ?? '';
+    }
+    inputs[f.name] = input;
+    return el('div', { className: `field${f.wide ? ' field-wide' : ''}` },
+      el('label', { for: id, text: f.label }),
+      input,
+      f.hint && el('p', { className: 'field-hint', text: f.hint }),
+      el('p', { className: 'field-error', dataset: { errorFor: f.name } }));
+  });
+
+  const submit = el('button', { className: 'btn btn-primary', type: 'submit' }, submitText);
+  const form = el('form', { className: 'form', novalidate: true },
+    el('div', { className: 'form-grid' }, nodes),
+    extra,
+    el('p', { className: 'form-error', role: 'alert' }),
+    el('div', { className: 'form-actions' },
+      el('button', { className: 'btn btn-secondary', type: 'button', on: { click: () => d.close() } }, 'Отмена'),
+      submit));
+  const d = openDialog({ title, content: form, className });
+  const errors = formErrors(form);
+  (Object.values(inputs)[0])?.focus();
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    errors.clear();
+    const v = {};
+    for (const [name, input] of Object.entries(inputs)) v[name] = input.value.trim();
+    busy(submit, true);
+    try {
+      await onSubmit(v);
+      d.close();
+    } catch (err) {
+      errors.show(err);
+      busy(submit, false);
+    }
+  });
+  return { ...d, form, inputs };
+}
+
+// Число из поля ввода: пусто → undefined (сервер сообщит «обязательное поле»), запятая → точка.
+export function num(value) {
+  if (value === undefined || value === null || String(value).trim() === '') return undefined;
+  return Number(String(value).replace(',', '.'));
+}
+
+// Действие над строкой таблицы с подтверждением и обработкой ошибки.
+export async function confirmAction({ title, text, confirmText, danger, action, success }) {
+  if (!(await confirmDialog({ title, text, confirmText, danger }))) return false;
+  try {
+    await action();
+    if (success) toast(success, 'success');
+    return true;
+  } catch (err) {
+    toast(err.message, 'error', 8000);
+    return false;
+  }
 }
