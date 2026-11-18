@@ -138,7 +138,7 @@ func (r *UserRepository) List(ctx context.Context, f models.UserFilter) ([]model
 func (r *UserRepository) Delete(ctx context.Context, id int64) error {
 	tag, err := r.db.Exec(ctx, `DELETE FROM users WHERE id = $1`, id)
 	if err != nil {
-		return fmt.Errorf("delete user: %w", util.MapPgError(err))
+		return fmt.Errorf("delete user: %w", util.MapPgDeleteError(err))
 	}
 	if tag.RowsAffected() == 0 {
 		return ErrNotFound

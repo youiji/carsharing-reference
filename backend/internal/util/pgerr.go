@@ -2,7 +2,6 @@ package util
 
 import (
 	"errors"
-	"strings"
 
 	"github.com/jackc/pgx/v5/pgconn"
 )
@@ -40,9 +39,10 @@ var foreignKeyFields = map[string]string{
 // Ошибки, не относящиеся к ограничениям целостности, возвращаются без изменений.
 //
 //   - 23505 (уникальность)  → 409 с кодом по имени ограничения (неизвестное — 409 conflict);
-//   - 23503 при удалении    → 409 has_related_records;
-//   - 23503 при вставке     → 400 validation_error (ссылка на несуществующий объект);
+//   - 23503 (внешний ключ)  → 400 validation_error (ссылка на несуществующий объект);
 //   - 23514 (CHECK)         → 400 validation_error.
+//
+// Для DELETE используется MapPgDeleteError: там 23503 означает связанные записи.
 func MapPgError(err error) error {
 	var pgErr *pgconn.PgError
 	if !errors.As(err, &pgErr) {
@@ -55,10 +55,6 @@ func MapPgError(err error) error {
 		}
 		return ErrConflict
 	case pgForeignKeyViolation:
-		// PostgreSQL: "update or delete on table ... violates foreign key constraint ..."
-		if strings.HasPrefix(pgErr.Message, "update or delete") {
-			return ErrHasRelatedRecords
-		}
 		if field, ok := foreignKeyFields[pgErr.ConstraintName]; ok {
 			return ErrValidation.WithDetails(map[string]string{field: "объект не найден"})
 		}
@@ -67,4 +63,16 @@ func MapPgError(err error) error {
 		return ErrValidation
 	}
 	return err
+}
+
+// MapPgDeleteError переводит ошибку DELETE в AppError. Любое нарушение внешнего
+// ключа (23503) при удалении означает, что на строку ссылаются другие записи,
+// → 409 has_related_records. Решение принимается только по коду SQLSTATE, поэтому
+// не зависит от языка сообщений сервера (lc_messages). Остальные ошибки — как в MapPgError.
+func MapPgDeleteError(err error) error {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == pgForeignKeyViolation {
+		return ErrHasRelatedRecords
+	}
+	return MapPgError(err)
 }

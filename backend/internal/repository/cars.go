@@ -183,7 +183,7 @@ func (r *CarRepository) ChangeStatus(ctx context.Context, id int64, to string, c
 func (r *CarRepository) Delete(ctx context.Context, id int64) error {
 	tag, err := r.db.Exec(ctx, `DELETE FROM cars WHERE id = $1`, id)
 	if err != nil {
-		return fmt.Errorf("delete car: %w", util.MapPgError(err))
+		return fmt.Errorf("delete car: %w", util.MapPgDeleteError(err))
 	}
 	if tag.RowsAffected() == 0 {
 		return ErrNotFound

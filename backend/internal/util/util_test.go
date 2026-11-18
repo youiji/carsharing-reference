@@ -98,7 +98,6 @@ func TestMapPgError(t *testing.T) {
 		{"unique email", &pgconn.PgError{Code: "23505", ConstraintName: "uq_users_email"}, "email_taken"},
 		{"unique active car", &pgconn.PgError{Code: "23505", ConstraintName: "uq_rentals_one_active_per_car"}, "car_unavailable"},
 		{"unique active user", &pgconn.PgError{Code: "23505", ConstraintName: "uq_rentals_one_active_per_user"}, "user_has_active_rental"},
-		{"fk on delete", &pgconn.PgError{Code: "23503", Message: `update or delete on table "cars" violates foreign key constraint "fk_rentals_car" on table "rentals"`}, "has_related_records"},
 		{"fk on insert", &pgconn.PgError{Code: "23503", Message: `insert or update on table "cars" violates foreign key constraint "fk_cars_tariff"`}, "validation_error"},
 		{"check", &pgconn.PgError{Code: "23514", ConstraintName: "chk_cars_fuel_level"}, "validation_error"},
 		{"unique tariff name (case-insensitive index)", &pgconn.PgError{Code: "23505", ConstraintName: "uq_tariffs_name"}, "name_taken"},
@@ -114,6 +113,30 @@ func TestMapPgError(t *testing.T) {
 
 	plain := errors.New("connection refused")
 	if MapPgError(plain) != plain {
+		t.Error("ошибки не из PostgreSQL должны возвращаться без изменений")
+	}
+}
+
+func TestMapPgDeleteError(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+		want string
+	}{
+		{"fk, english message", &pgconn.PgError{Code: "23503", Message: `update or delete on table "cars" violates foreign key constraint "fk_rentals_car" on table "rentals"`}, "has_related_records"},
+		{"fk, russian message", &pgconn.PgError{Code: "23503", Message: `UPDATE или DELETE в таблице "cars" нарушает ограничение внешнего ключа "fk_rentals_car" таблицы "rentals"`}, "has_related_records"},
+		{"fk, wrapped", fmt.Errorf("tx: %w", &pgconn.PgError{Code: "23503"}), "has_related_records"},
+		{"other codes as in MapPgError", &pgconn.PgError{Code: "23514", ConstraintName: "chk_cars_fuel_level"}, "validation_error"},
+	}
+	for _, tt := range tests {
+		appErr, ok := AsAppError(MapPgDeleteError(tt.err))
+		if !ok || appErr.Code != tt.want {
+			t.Errorf("%s: got %v, want %s", tt.name, MapPgDeleteError(tt.err), tt.want)
+		}
+	}
+
+	plain := errors.New("connection refused")
+	if MapPgDeleteError(plain) != plain {
 		t.Error("ошибки не из PostgreSQL должны возвращаться без изменений")
 	}
 }

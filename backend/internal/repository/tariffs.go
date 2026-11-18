@@ -79,7 +79,7 @@ func (r *TariffRepository) Update(ctx context.Context, t models.Tariff) (models.
 func (r *TariffRepository) Delete(ctx context.Context, id int64) error {
 	tag, err := r.db.Exec(ctx, `DELETE FROM tariffs WHERE id = $1`, id)
 	if err != nil {
-		return fmt.Errorf("delete tariff: %w", util.MapPgError(err))
+		return fmt.Errorf("delete tariff: %w", util.MapPgDeleteError(err))
 	}
 	if tag.RowsAffected() == 0 {
 		return ErrNotFound
