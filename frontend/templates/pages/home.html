@@ -1,0 +1,51 @@
+{{define "content"}}
+<section class="hero">
+  <div class="hero-text">
+    <h1>Каршеринг</h1>
+    <p class="lead">Информационно-справочная система сервиса каршеринга: каталог автомобилей на карте,
+      бронирование и поездки, учёт автопарка, тарифов и технического обслуживания.</p>
+    <div class="hero-actions" data-show="guest" hidden>
+      <a class="btn btn-primary" href="/register">Зарегистрироваться</a>
+      <a class="btn btn-secondary" href="/login">Войти</a>
+    </div>
+    <p class="hero-greeting" data-show="user" hidden></p>
+  </div>
+</section>
+
+<section class="home-panel" data-show="client" hidden>
+  <h2>Текущая аренда</h2>
+  <div class="current-rental"><p class="muted">Загрузка…</p></div>
+</section>
+
+<section class="home-panel" data-show="manager admin" hidden>
+  <h2>Сводка</h2>
+  <div class="tiles home-stats"><p class="muted">Загрузка…</p></div>
+</section>
+
+<section class="home-panel">
+  <h2 data-show="guest" hidden>Возможности</h2>
+  <h2 data-show="user" hidden>Разделы</h2>
+  <div class="cards home-sections">
+    <a class="card card-link" href="/catalog" data-show="client manager admin" hidden>
+      <h3>Каталог и карта</h3><p>Свободные автомобили в таблице и на карте, поиск и сортировка.</p></a>
+    <a class="card card-link" href="/rentals/my" data-show="client" hidden>
+      <h3>Мои аренды</h3><p>Бронирование, начало и завершение поездки, история и стоимость.</p></a>
+    <a class="card card-link" href="/fleet" data-show="manager admin" hidden>
+      <h3>Автомобили</h3><p>Добавление и изменение автомобилей, смена статуса.</p></a>
+    <a class="card card-link" href="/maintenance" data-show="manager admin" hidden>
+      <h3>Обслуживание</h3><p>Журнал технического обслуживания автопарка.</p></a>
+    <a class="card card-link" href="/rentals" data-show="manager admin" hidden>
+      <h3>Все аренды</h3><p>Поиск и сортировка аренд, отмена бронирований.</p></a>
+    <a class="card card-link" href="/stats" data-show="manager admin" hidden>
+      <h3>Статистика</h3><p>Пользователи, автопарк, время ожидания и выручка.</p></a>
+    <a class="card card-link" href="/users" data-show="admin" hidden>
+      <h3>Пользователи и роли</h3><p>Назначение ролей и изменение данных пользователей.</p></a>
+    <div class="card" data-show="guest" hidden>
+      <h3>Клиентам</h3><p>Свободные автомобили на карте, бронирование в один клик, поминутный тариф и история поездок.</p></div>
+    <div class="card" data-show="guest" hidden>
+      <h3>Менеджерам автопарка</h3><p>Учёт автомобилей, тарифов и технического обслуживания.</p></div>
+    <div class="card" data-show="guest" hidden>
+      <h3>Администраторам</h3><p>Управление пользователями и ролями, сводная статистика.</p></div>
+  </div>
+</section>
+{{end}}

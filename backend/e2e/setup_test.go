@@ -89,7 +89,13 @@ func newEnv(t *testing.T) *env {
 	if err != nil {
 		t.Fatal(err)
 	}
-	srv := httptest.NewServer(app.NewHandler(pool, util.NewTokenManager(jwtSecret, 30*time.Minute)))
+	_, thisFile, _, _ := runtime.Caller(0)
+	handler, err := app.NewHandler(pool, util.NewTokenManager(jwtSecret, 30*time.Minute),
+		filepath.Join(filepath.Dir(thisFile), "..", "..", "frontend"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv := httptest.NewServer(handler)
 	t.Cleanup(func() {
 		srv.Close()
 		pool.Close()

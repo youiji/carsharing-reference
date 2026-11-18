@@ -22,11 +22,16 @@ backend/
   internal/models/     структуры таблиц БД
   internal/dto/        структуры запросов и ответов API
   internal/util/       ошибки API, JSON, JWT, bcrypt, валидация
+  internal/web/        страницы из шаблонов, статика, заголовки безопасности
+  internal/app/        сборка приложения (API + страницы)
+  e2e/                 сквозные тесты API
 db/
   schema.sql           DDL
   seed.sql             тестовые данные
   checks.sql           проверка ограничений целостности
-frontend/              шаблоны и статика
+frontend/
+  templates/           макет (layout.html) и шаблоны страниц (pages/)
+  static/css, js, img  стили, модули страниц (js/pages), иконка
 ```
 
 ## Запуск
@@ -57,7 +62,9 @@ frontend/              шаблоны и статика
    go run ./cmd/server
    ```
 
-   Проверка: `curl http://localhost:8080/api/health`.
+   Интерфейс: http://localhost:8080, проверка API: `curl http://localhost:8080/api/health`.
+   Сервер берёт шаблоны и статику из `FRONTEND_DIR` (по умолчанию `../frontend`
+   относительно `backend/`).
 
 ## Тесты
 

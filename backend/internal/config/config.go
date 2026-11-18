@@ -16,6 +16,7 @@ type Config struct {
 	DatabaseURL string        // строка подключения к PostgreSQL
 	JWTSecret   string        // секрет подписи JWT (HS256)
 	JWTTTL      time.Duration // срок жизни токена
+	FrontendDir string        // каталог клиентской части (templates, static)
 }
 
 const minSecretLen = 32
@@ -31,6 +32,7 @@ func Load() (Config, error) {
 		HTTPAddr:    getEnv("HTTP_ADDR", ":8080"),
 		DatabaseURL: os.Getenv("DATABASE_URL"),
 		JWTSecret:   os.Getenv("JWT_SECRET"),
+		FrontendDir: getEnv("FRONTEND_DIR", "../frontend"),
 	}
 
 	ttl, err := time.ParseDuration(getEnv("JWT_TTL", "30m"))

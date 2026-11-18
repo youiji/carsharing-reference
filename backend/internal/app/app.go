@@ -9,13 +9,28 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"carsharing/internal/handlers"
+	"carsharing/internal/middleware"
 	"carsharing/internal/repository"
 	"carsharing/internal/services"
 	"carsharing/internal/util"
+	"carsharing/internal/web"
 )
 
-// NewHandler возвращает HTTP-обработчик всего API.
-func NewHandler(pool *pgxpool.Pool, tokens *util.TokenManager) http.Handler {
+// NewHandler возвращает HTTP-обработчик всего приложения: REST API под /api/
+// и клиентскую часть (страницы и статику) из каталога frontendDir.
+func NewHandler(pool *pgxpool.Pool, tokens *util.TokenManager, frontendDir string) (http.Handler, error) {
+	site, err := web.New(frontendDir)
+	if err != nil {
+		return nil, err
+	}
+	mux := http.NewServeMux()
+	mux.Handle("/api/", newAPI(pool, tokens))
+	mux.Handle("/", middleware.Chain(site, middleware.Logger, middleware.Recover))
+	return web.SecurityHeaders(mux), nil
+}
+
+// newAPI собирает REST API: репозитории → сервисы → обработчики.
+func newAPI(pool *pgxpool.Pool, tokens *util.TokenManager) http.Handler {
 	userRepo := repository.NewUserRepository(pool)
 	return handlers.NewRouter(handlers.Deps{
 		DB:          pool,

@@ -41,7 +41,10 @@ func run() error {
 	}
 	defer pool.Close()
 
-	router := app.NewHandler(pool, util.NewTokenManager(cfg.JWTSecret, cfg.JWTTTL))
+	router, err := app.NewHandler(pool, util.NewTokenManager(cfg.JWTSecret, cfg.JWTTTL), cfg.FrontendDir)
+	if err != nil {
+		return err
+	}
 
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,

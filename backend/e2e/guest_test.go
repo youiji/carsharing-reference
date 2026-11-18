@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"net/http"
 	"strings"
 	"testing"
 	"time"
@@ -108,4 +109,32 @@ func issue(t *testing.T, secret string, ttl time.Duration, userID int64, role st
 		t.Fatal(err)
 	}
 	return tok
+}
+
+// Клиентская часть отдаётся тем же сервером, что и API; заголовки безопасности — везде.
+func TestSiteAndSecurityHeaders(t *testing.T) {
+	e := newEnv(t)
+	get := func(path string) *http.Response {
+		resp, err := e.srv.Client().Get(e.srv.URL + path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp.Body.Close()
+		return resp
+	}
+	for _, path := range []string{"/", "/login", "/about", "/catalog", "/static/js/app.js", "/api/health"} {
+		resp := get(path)
+		if resp.StatusCode != 200 {
+			t.Errorf("%s: %d", path, resp.StatusCode)
+		}
+		if resp.Header.Get("X-Content-Type-Options") != "nosniff" || resp.Header.Get("X-Frame-Options") != "DENY" {
+			t.Errorf("%s: нет заголовков безопасности: %v", path, resp.Header)
+		}
+	}
+	if resp := get("/nope"); resp.StatusCode != 404 || !strings.HasPrefix(resp.Header.Get("Content-Type"), "text/html") {
+		t.Errorf("неизвестная страница: %d %s", resp.StatusCode, resp.Header.Get("Content-Type"))
+	}
+	if resp := get("/api/nope"); resp.StatusCode != 404 || !strings.HasPrefix(resp.Header.Get("Content-Type"), "application/json") {
+		t.Errorf("неизвестный путь API должен отвечать JSON: %d %s", resp.StatusCode, resp.Header.Get("Content-Type"))
+	}
 }
