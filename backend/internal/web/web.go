@@ -152,9 +152,11 @@ func (h *Handler) render(w http.ResponseWriter, data pageData) {
 
 // contentSecurityPolicy — защита от XSS на уровне браузера: скрипты и стили
 // загружаются только с нашего сервера, встроенные скрипты запрещены. Даже если
-// в данные попадёт <script>, браузер его не выполнит. Тайлы карты — со Stadia Maps.
+// в данные попадёт <script>, браузер его не выполнит. Векторная карта (стиль, тайлы, шрифты) — с OpenFreeMap, запасная растровая — со Stadia Maps;
+// воркер MapLibre загружается только с нашего сервера.
 const contentSecurityPolicy = "default-src 'self'; script-src 'self'; style-src 'self'; " +
-	"img-src 'self' data: https://tiles.stadiamaps.com; connect-src 'self'; " +
+	"img-src 'self' data: https://tiles.stadiamaps.com https://tiles.openfreemap.org; " +
+	"connect-src 'self' https://tiles.openfreemap.org; worker-src 'self'; " +
 	"object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
 
 // noDirListing запрещает просмотр содержимого каталогов статики.
