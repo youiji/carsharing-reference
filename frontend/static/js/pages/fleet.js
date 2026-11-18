@@ -80,7 +80,7 @@ function carDialog(car) {
     fields: [
       { name: 'brand_model', label: 'Марка и модель', attrs: { maxlength: 100, required: true } },
       { name: 'plate_number', label: 'Гос. номер', hint: 'Пробелы и латиница допустимы: номер будет приведён к виду А101АА777', attrs: { maxlength: 20, required: true } },
-      { name: 'tariff_id', label: 'Тариф', type: 'select', options: tariffs.map((t) => ({ value: t.id, label: `${t.name} — ${formatMoney(t.price_per_min)}/мин` })) },
+      { name: 'tariff_id', label: 'Тариф', type: 'select', options: tariffs.map((t) => ({ value: t.id, label: `${t.name}, ${formatMoney(t.price_per_min)}/мин` })) },
       { name: 'fuel_level', label: 'Топливо, %', type: 'number', attrs: { min: 0, max: 100, step: 1, inputmode: 'numeric' } },
       { name: 'latitude', label: 'Широта', type: 'number', attrs: { min: -90, max: 90, step: 'any' } },
       { name: 'longitude', label: 'Долгота', type: 'number', attrs: { min: -180, max: 180, step: 'any' } },
@@ -155,7 +155,7 @@ async function remove(car) {
   const done = await confirmAction({
     title: 'Удаление автомобиля',
     text: [`Удалить ${car.brand_model} (${car.plate_number})?`,
-      'Автомобиль с историей аренд или обслуживания удалить нельзя — его можно перевести в статус «Списан».'],
+      'Автомобиль с историей аренд или обслуживания удалить нельзя: его можно перевести в статус «Списан».'],
     confirmText: 'Удалить',
     danger: true,
     action: () => api.del(`/cars/${car.id}`),

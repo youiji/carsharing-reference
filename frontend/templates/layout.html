@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{.Page.Title}} — Каршеринг</title>
+  <title>{{.Page.Title}} | Каршеринг</title>
+  <meta name="description" content="Информационно-справочная система сервиса каршеринга: автомобили на карте, поминутная аренда, учёт автопарка и обслуживания.">
   <link rel="icon" href="/static/img/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/static/css/main.css">
   {{block "head" .}}{{end}}
@@ -14,7 +15,7 @@
   <header class="site-header">
     <div class="container header-inner">
       <a class="brand" href="/">
-        <img src="/static/img/favicon.svg" alt="" width="28" height="28">
+        <img src="/static/img/favicon.svg" alt="" width="28" height="28" aria-hidden="true">
         <span>Каршеринг</span>
       </a>
 
@@ -53,8 +54,8 @@
 
   <footer class="site-footer">
     <div class="container footer-inner">
-      <span>© {{.Year}} Информационно-справочная система сервиса каршеринга</span>
-      <span>Курсовая работа · Пономарёв В. Д., ТРПО24-5 · <a href="/about">Об авторе</a></span>
+      <p>© {{.Year}} Информационно-справочная система сервиса каршеринга</p>
+      <p>Курсовая работа, Пономарёв В. Д., группа ТРПО24-5. <a href="/about">Об авторе</a></p>
     </div>
   </footer>
 

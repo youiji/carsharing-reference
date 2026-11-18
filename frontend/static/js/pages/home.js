@@ -26,7 +26,7 @@ async function currentRental() {
       : `Забронировано ${formatDateTime(open.booked_at)}`;
     render(box, el('div', { className: 'card rental-card' },
       el('div', { className: 'rental-card-head' },
-        el('h3', { text: `${open.car.brand_model} · ${open.car.plate_number}` }),
+        el('h3', { text: `${open.car.brand_model}, ${open.car.plate_number}` }),
         badge(open.status, RENTAL_STATUS)),
       el('p', { className: 'muted', text: since }),
       el('p', { text: `Тариф: ${formatMoney(open.price_per_min)} / мин, ожидание ${formatMoney(open.waiting_per_min)} / мин` }),

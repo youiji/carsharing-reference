@@ -1,0 +1,29 @@
+[
+ {
+  "mode": "redesign",
+  "depth": "full",
+  "scope": "site",
+  "shape": "kept app screens; intro + route on /",
+  "theme": "wayfind",
+  "axes": "light/mono/cool",
+  "hero": "Settled",
+  "nav": "two-row navy bar",
+  "footer": "two lines",
+  "imagery": "none",
+  "photos": [],
+  "entry": "intro",
+  "fingerprint": "navy-wayfind-route-plates",
+  "sections": [
+   "intro",
+   "route",
+   "current rental / summary band",
+   "destinations"
+  ],
+  "signature": "rental route as wayfinding plates; staff figures amber on navy",
+  "waived": [
+   "64"
+  ],
+  "prompt": "carsharing service tool: car catalog on a map, bookings and trips, fleet, tariffs and maintenance for managers; deep navy and white",
+  "date": "2026-11-18"
+ }
+]

@@ -64,7 +64,7 @@ function renderCurrent(box, r) {
 
   render(box, el('div', { className: 'card rental-current' },
     el('div', { className: 'rental-card-head' },
-      el('h3', { text: `${r.car.brand_model} · ${r.car.plate_number}` }),
+      el('h3', { text: `${r.car.brand_model}, ${r.car.plate_number}` }),
       badge(r.status, RENTAL_STATUS)),
     el('p', { className: 'muted', text: booked
       ? `Забронировано ${formatDateTime(r.booked_at)}. Пока поездка не началась, начисляется ожидание.`

@@ -49,7 +49,7 @@ async function loadTariffs(form) {
   try {
     const { items } = await api.get('/tariffs');
     for (const t of items) {
-      form.tariff_id.append(el('option', { value: t.id }, `${t.name} — ${formatMoney(t.price_per_min)}/мин`));
+      form.tariff_id.append(el('option', { value: t.id }, `${t.name}, ${formatMoney(t.price_per_min)}/мин`));
     }
   } catch (err) {
     toast(err.message, 'error');
@@ -132,7 +132,7 @@ async function book(car) {
     text: [
       el('p', {}, el('b', { text: `${car.brand_model}, ${car.plate_number}` })),
       `Тариф «${car.tariff.name}»: ${formatMoney(car.tariff.price_per_min)} за минуту поездки.`,
-      `С момента бронирования до начала поездки начисляется ожидание — ${formatMoney(car.tariff.waiting_per_min)} за минуту.`,
+      `С момента бронирования до начала поездки начисляется ожидание: ${formatMoney(car.tariff.waiting_per_min)} за минуту.`,
     ],
     confirmText: 'Забронировать',
   });

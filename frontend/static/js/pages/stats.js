@@ -10,10 +10,13 @@
 import { api } from '../api.js';
 import { CAR_STATUS, el, formatMoney, render, RENTAL_STATUS, toast } from '../ui.js';
 
-const SERIES = '#2a78d6';        // категориальный цвет 1 (проверен валидатором на белом фоне)
-const TEXT = '#1c2427';
-const MUTED = '#5f6b70';
-const GRID = '#e6eaec';
+// Цвета — hex-значения токенов из static/css/tokens.css (Chart.js разбирает цвета сам,
+// поэтому OKLCH не передаётся). Цвет ряда проверен валидатором навыка dataviz на фоне --color-paper.
+const SERIES = '#1f5ed9';        // --color-accent (кобальт)
+const SERIES_HOVER = '#114cbf';  // --color-accent-hover
+const TEXT = '#0d1f47';          // --color-ink
+const MUTED = '#535e72';         // --color-muted
+const GRID = '#d2d8e1';          // --color-rule
 const ROLES = { client: 'Клиенты', manager: 'Менеджеры', admin: 'Администраторы' };
 const charts = new Map();
 const nf = new Intl.NumberFormat('ru-RU');
@@ -98,8 +101,8 @@ function bar(key, title, rows, fmt, head) {
       datasets: [{
         data: rows.map((r) => r.value),
         backgroundColor: SERIES,
-        hoverBackgroundColor: '#256abf',
-        borderRadius: 4,          // скругление только у конца столбца
+        hoverBackgroundColor: SERIES_HOVER,
+        borderRadius: 0,          // тема Wayfind: прямые углы
         borderSkipped: 'start',
         maxBarThickness: 22,
         categoryPercentage: 0.85,
@@ -115,7 +118,7 @@ function bar(key, title, rows, fmt, head) {
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: '#1c2427',
+          backgroundColor: TEXT,
           padding: 10,
           displayColors: false,
           callbacks: {

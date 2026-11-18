@@ -36,7 +36,7 @@ func TestPages(t *testing.T) {
 			continue
 		}
 		for _, want := range []string{
-			"<title>" + p.Title + " — Каршеринг</title>",
+			"<title>" + p.Title + " | Каршеринг</title>",
 			`data-page="` + p.Name + `"`,
 			`data-roles="` + strings.Join(p.Roles, " ") + `"`,
 			`src="/static/js/app.js"`,

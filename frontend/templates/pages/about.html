@@ -1,8 +1,10 @@
 {{define "content"}}
-<h1>Об авторе</h1>
-<div class="grid-2">
-  <section class="card">
-    <h2>Автор</h2>
+<div class="page-head">
+  <h1>Об авторе</h1>
+</div>
+<div class="about-grid">
+  <section aria-labelledby="author-title">
+    <h2 id="author-title">Автор</h2>
     <dl class="props">
       <dt>Студент</dt><dd>Пономарёв В. Д.</dd>
       <dt>Группа</dt><dd>ТРПО24-5</dd>
@@ -10,8 +12,8 @@
       <dt>Учебное заведение</dt><dd>Финансовый университет при Правительстве Российской Федерации</dd>
     </dl>
   </section>
-  <section class="card">
-    <h2>Работа</h2>
+  <section aria-labelledby="work-title">
+    <h2 id="work-title">Работа</h2>
     <dl class="props">
       <dt>Тема</dt><dd>Информационно-справочная система сервиса каршеринга</dd>
       <dt>Вид работы</dt><dd>Курсовая работа</dd>
@@ -19,14 +21,14 @@
       <dt>Год</dt><dd>{{.Year}}</dd>
     </dl>
   </section>
+  <section aria-labelledby="tech-title">
+    <h2 id="tech-title">Технологии</h2>
+    <dl class="props">
+      <dt>Сервер</dt><dd>Go: REST API, JWT-аутентификация, bcrypt, разграничение доступа по ролям</dd>
+      <dt>База данных</dt><dd>PostgreSQL: ограничения целостности, транзакции, частичные уникальные индексы</dd>
+      <dt>Клиент</dt><dd>HTML5, CSS3, JavaScript; карта Leaflet, диаграммы Chart.js</dd>
+      <dt>Архитектура</dt><dd>Трёхзвенная: браузер, сервер приложения, СУБД</dd>
+    </dl>
+  </section>
 </div>
-<section class="card">
-  <h2>Технологии</h2>
-  <ul class="tech-list">
-    <li><b>Сервер:</b> Go — REST API, JWT-аутентификация, bcrypt, разграничение доступа по ролям</li>
-    <li><b>База данных:</b> PostgreSQL — ограничения целостности, транзакции, частичные уникальные индексы</li>
-    <li><b>Клиент:</b> HTML5, CSS3, JavaScript; карта Leaflet, диаграммы Chart.js</li>
-    <li><b>Архитектура:</b> трёхзвенная — браузер, сервер приложения, СУБД</li>
-  </ul>
-</section>
 {{end}}
