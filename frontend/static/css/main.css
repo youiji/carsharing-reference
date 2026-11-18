@@ -294,6 +294,11 @@ dialog.modal::backdrop { background: var(--color-overlay); }
 .map-small { height: 300px; margin-bottom: var(--space-2xs); }
 .leaflet-container { font: inherit; }
 .leaflet-container a { color: var(--color-accent); }
+.leaflet-control-attribution.leaflet-control { padding: 0 var(--space-2xs); background: var(--color-paper); color: var(--color-muted); font-size: 10px; line-height: 1.6; }
+.leaflet-control-attribution a { color: var(--color-muted); text-decoration: none; }
+.leaflet-control-attribution a:hover { color: var(--color-ink); text-decoration: underline; }
+.leaflet-bar a { color: var(--color-ink); border-radius: 0; }
+.leaflet-touch .leaflet-bar { border: var(--rule-bar) solid var(--color-ink); border-radius: 0; }
 .car-marker { background: none; border: 0; }
 .car-marker-pin { position: relative; display: block; width: 22px; height: 22px; background: var(--color-success); border: 3px solid var(--color-paper); box-shadow: 0 0 0 2px var(--color-ink); }
 .car-marker-pin::after { content: ""; position: absolute; left: 50%; top: 100%; width: 2px; height: 10px; margin-left: -1px; margin-top: var(--space-2xs); background: var(--color-ink); }

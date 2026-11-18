@@ -152,9 +152,9 @@ func (h *Handler) render(w http.ResponseWriter, data pageData) {
 
 // contentSecurityPolicy — защита от XSS на уровне браузера: скрипты и стили
 // загружаются только с нашего сервера, встроенные скрипты запрещены. Даже если
-// в данные попадёт <script>, браузер его не выполнит. Тайлы карты — с OpenStreetMap.
+// в данные попадёт <script>, браузер его не выполнит. Тайлы карты — со Stadia Maps.
 const contentSecurityPolicy = "default-src 'self'; script-src 'self'; style-src 'self'; " +
-	"img-src 'self' data: https://tile.openstreetmap.org https://*.tile.openstreetmap.org; connect-src 'self'; " +
+	"img-src 'self' data: https://tiles.stadiamaps.com; connect-src 'self'; " +
 	"object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
 
 // noDirListing запрещает просмотр содержимого каталогов статики.
@@ -174,8 +174,7 @@ func SecurityHeaders(next http.Handler) http.Handler {
 		h := w.Header()
 		h.Set("X-Content-Type-Options", "nosniff")
 		h.Set("X-Frame-Options", "DENY")
-		// Другим сайтам передаётся только адрес сайта без пути: сервер тайлов
-		// OpenStreetMap требует заголовок Referer и без него отказывает в картах.
+		// Другим сайтам (серверу тайлов карты) передаётся только адрес сайта, без пути и параметров.
 		h.Set("Referrer-Policy", "strict-origin-when-cross-origin")
 		next.ServeHTTP(w, r)
 	})

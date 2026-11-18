@@ -1,14 +1,21 @@
 // Карта Leaflet (подключается на странице как /static/vendor/leaflet/leaflet.js → window.L).
-// Подложка — OpenStreetMap; маркеры — собственные (divIcon), цвет по статусу автомобиля.
+// Подложка: Stadia Maps, стиль Alidade Smooth (светлая карта на данных OpenStreetMap и
+// OpenMapTiles). Без ключа Stadia отдаёт тайлы для localhost; для сайта в интернете домен
+// регистрируется в личном кабинете Stadia (бесплатно для некоммерческого использования).
+// Маркеры собственные (divIcon), цвет по статусу автомобиля.
 
 const MOSCOW = [55.7522, 37.6156];
 
 export function createMap(container, { center = MOSCOW, zoom = 12 } = {}) {
   const L = window.L;
   const map = L.map(container, { scrollWheelZoom: false }).setView(center, zoom);
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">участники OpenStreetMap</a>',
+  // Строка атрибуции: префикс Leaflet (ссылка и флаг) убран, лицензия библиотеки (BSD)
+  // этого не требует, библиотека указана на странице «Об авторе». Указание источника данных
+  // обязательно по условиям Stadia Maps, OpenMapTiles и OpenStreetMap (ODbL), оно остаётся.
+  map.attributionControl.setPrefix(false);
+  L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png', {
+    maxZoom: 20,
+    attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>, &copy; <a href="https://openmaptiles.org/">OpenMapTiles</a>, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
   }).addTo(map);
   // Колесо мыши масштабирует карту только после клика по ней, чтобы не мешать прокрутке страницы.
   map.on('click', () => map.scrollWheelZoom.enable());
