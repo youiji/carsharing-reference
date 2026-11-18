@@ -1,13 +1,13 @@
 // Карта Leaflet (подключается шаблоном "map-head" → window.L).
 //
-// Подложка векторная: тайлы OpenFreeMap (схема OpenMapTiles, данные OpenStreetMap)
+// Подложка векторная: тайлы OpenFreeMap, цветной стиль Liberty (схема OpenMapTiles, данные OpenStreetMap)
 // рисует MapLibre GL через плагин-мост maplibre-gl-leaflet, подписи на русском.
 // Маркеры, группы и подсказки остаются обычными объектами Leaflet.
 // Если WebGL недоступен или стиль не загрузился, подключается растровая подложка
 // Stadia Maps (Alidade Smooth).
 
 const MOSCOW = [55.7522, 37.6156];
-const STYLE_URL = 'https://tiles.openfreemap.org/styles/positron';
+const STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
 const VECTOR_ATTRIBUTION = '<a href="https://openfreemap.org">OpenFreeMap</a>, &copy; <a href="https://www.openmaptiles.org/">OpenMapTiles</a>, данные &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
 const RASTER_ATTRIBUTION = '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>, &copy; <a href="https://openmaptiles.org/">OpenMapTiles</a>, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
 
