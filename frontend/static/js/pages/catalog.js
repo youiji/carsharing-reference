@@ -6,7 +6,7 @@ import {
   badge, CAR_STATUS, confirmDialog, debounce, el, emptyRow, flash, formatMoney,
   render, sortableHeaders, toast,
 } from '../ui.js';
-import { carIcon, createMap } from '../map.js';
+import { carClusterGroup, carIcon, createMap } from '../map.js';
 
 let user;
 let openRental = null; // текущая аренда клиента (бронирование или поездка)
@@ -23,7 +23,7 @@ export async function init(ctx) {
 
   readUrl(form);
   map = createMap(document.getElementById('map'));
-  markers = window.L.layerGroup().addTo(map);
+  markers = carClusterGroup().addTo(map);
 
   const reload = () => { writeUrl(); load(table); };
   form.addEventListener('submit', (e) => e.preventDefault());
@@ -181,9 +181,9 @@ function popup(car) {
 function focusCar(id) {
   const m = markerById.get(id);
   if (!m) return;
-  map.setView(m.getLatLng(), Math.max(map.getZoom(), 14));
-  m.openPopup();
   highlightRow(id);
+  // Если машина внутри группы, карта приближается до неё, затем открывается подсказка.
+  markers.zoomToShowLayer(m, () => m.openPopup());
   document.getElementById('map').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 

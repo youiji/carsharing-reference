@@ -34,3 +34,29 @@ export function carIcon(status) {
 }
 
 export const leafletReady = () => Boolean(window.L);
+
+/**
+ * Группа маркеров с объединением близких машин (плагин Leaflet.markercluster).
+ * При отдалении машины собираются в квадрат с числом, при приближении рассыпаются;
+ * с 16-го масштаба (уровень улиц) каждая машина показывается отдельно.
+ */
+export function carClusterGroup() {
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  return window.L.markerClusterGroup({
+    maxClusterRadius: 48,
+    disableClusteringAtZoom: 16,
+    showCoverageOnHover: false,
+    spiderfyOnMaxZoom: true,
+    animate: !reduceMotion,
+    iconCreateFunction(cluster) {
+      const n = cluster.getChildCount();
+      const size = n < 10 ? 36 : n < 100 ? 42 : 48;
+      return window.L.divIcon({
+        // Число собирается из счётчика плагина, пользовательские данные сюда не попадают.
+        html: `<span class="car-cluster-count">${Number(n)}</span>`,
+        className: 'car-cluster',
+        iconSize: [size, size],
+      });
+    },
+  });
+}
