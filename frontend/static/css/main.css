@@ -330,3 +330,21 @@ td.actions .btn + .btn { margin-left: 4px; }
 .status-option { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--c-border); border-radius: var(--radius-sm); cursor: pointer; }
 .status-option:has(input:checked) { border-color: var(--c-primary); background: var(--c-primary-soft); }
 .status-option input { width: auto; }
+
+/* ---------- Статистика ---------- */
+
+.stats-tiles { margin-bottom: 20px; }
+.stats-time { align-self: center; }
+.charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 480px), 1fr)); gap: 16px; }
+.chart-card { margin: 0; }
+.chart-card h2 { margin-bottom: 2px; }
+.chart-sub { color: var(--c-muted); font-size: .875rem; margin-bottom: 12px; }
+.chart-canvas { position: relative; width: 100%; }
+.chart-data { margin-top: 10px; font-size: .9rem; }
+.chart-data summary { cursor: pointer; color: var(--c-primary); font-weight: 600; }
+.chart-data table { margin-top: 8px; }
+.chart-data th, .chart-data td { padding: 6px 8px; }
+.badge-role-client { background: var(--c-info-soft); color: var(--c-info); }
+.badge-role-manager { background: var(--c-warning-soft); color: var(--c-warning); }
+.badge-role-admin { background: #f3e8fd; color: #6b21a8; }
+.status-option .muted { margin-left: auto; text-align: right; }

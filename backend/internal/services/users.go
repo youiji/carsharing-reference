@@ -119,7 +119,7 @@ func (s *UserService) modify(ctx context.Context, id int64, change func(u *model
 		}
 		if open {
 			return util.ErrUserHasActiveRental.WithMessage(
-				"У пользователя есть бронирование или поездка: изменить данные можно после её завершения")
+				"У пользователя есть бронирование или поездка: изменить роль и данные можно после её завершения")
 		}
 		change(&u)
 		saved, err = tx.Save(ctx, u)
